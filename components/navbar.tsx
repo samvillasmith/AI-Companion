@@ -1,19 +1,11 @@
 "use client";
 
-import { Menu, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Poppins } from "next/font/google";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { Button } from "./ui/button";
 import { ModeToggle } from "./mode-toggle";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "../components/ui/sheet";
 import { MobileSidebar } from "../components/mobile-sidebar";
 
 import { cn } from "@/lib/utils";

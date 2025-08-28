@@ -5,6 +5,7 @@ import {
   ClerkProvider
 } from '@clerk/nextjs'
 
+import { cn } from "../lib/utils";
 import { ThemeProvider } from "../components/theme-provider";
 
 const geistSans = Geist({
@@ -31,7 +32,7 @@ export default function RootLayout({
     <ClerkProvider>
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${cn("bg-secondary", geistSans.variable)} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         {children}
