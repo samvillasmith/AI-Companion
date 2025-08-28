@@ -31,6 +31,7 @@ export const Sidebar = () => {
         },
     ]
     
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const onNavigate = (url: string, premium: boolean) => {
         //Check if Premium
         return router.push(url);
