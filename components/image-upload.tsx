@@ -25,6 +25,7 @@ export const ImageUpload = ({
     return null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleUpload = (result: any) => {
     if (result?.event === "success" && result?.info) {
       const url = result.info.secure_url || result.info.url;
