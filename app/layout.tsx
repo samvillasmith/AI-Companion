@@ -4,6 +4,7 @@ import "./globals.css";
 import {
   ClerkProvider
 } from '@clerk/nextjs'
+import { Toaster } from "../components/ui/sonner";
 
 import { cn } from "../lib/utils";
 import { ThemeProvider } from "../components/theme-provider";
@@ -36,6 +37,7 @@ export default function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         {children}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
