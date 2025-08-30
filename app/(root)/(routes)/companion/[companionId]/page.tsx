@@ -13,7 +13,7 @@ const CompanionIdPage = async ({
 
     // Await params before accessing its properties (Next.js 15 requirement)
     const { companionId } = await params;
-
+    
     // Check for premium subscription
 
     // Fetch companion data only if editing (not creating new)

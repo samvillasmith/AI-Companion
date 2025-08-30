@@ -1,9 +1,12 @@
 "use client";
 
 import * as z from "zod";
+import axios from "axios";
 import { Category, Companion } from "@prisma/client";
 import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner"
 import { 
     Form, 
     FormField, 
@@ -78,23 +81,42 @@ const formSchema = z.object({
     })
 })
 
-export const CompanionForm = ({ categories, initialData }: CompanionFormProps) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: initialData || {
-      name: "",
-      description: "",
-      instructions: "",   // ✅ add this so it's controlled
-      seed: "",
-      src: "",
-      categoryId: undefined,
+export const CompanionForm = ({ 
+    categories, initialData }: 
+    CompanionFormProps) => {
+
+        const router = useRouter();
+
+    
+        const form = useForm<z.infer<typeof formSchema>>({
+            resolver: zodResolver(formSchema),
+            defaultValues: initialData || {
+            name: "",
+            description: "",
+            instructions: "",   // ✅ add this so it's controlled
+            seed: "",
+            src: "",
+            categoryId: undefined,
     },
   });
 
   const isLoading = form.formState.isSubmitting;
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log(values);
+    try {
+        if (initialData) {
+            // Update the companion
+            await axios.patch(`/api/companion/${initialData.id}`, values)
+        } else {
+            // Create the companion function
+            await axios.post("/api/companion", values)
+        } 
+        toast("Success!", { description: "Your companion was created." });
+        router.refresh();
+        router.push("/");
+    } catch {
+        toast("Something went wrong.", { description: "Please try again." });
+    }
   };
 
   return (
@@ -184,7 +206,7 @@ export const CompanionForm = ({ categories, initialData }: CompanionFormProps) =
                   <Select
                     disabled={isLoading}
                     onValueChange={field.onChange}
-                    value={field.value}
+                    value={field.value ?? ""}
                     defaultValue={field.value}
                   >
                     <FormControl>
