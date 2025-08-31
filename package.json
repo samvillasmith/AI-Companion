@@ -10,7 +10,7 @@
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.31.5",
+    "@clerk/nextjs": "^6.31.6",
     "@hookform/resolvers": "^5.2.1",
     "@prisma/client": "^6.15.0",
     "@radix-ui/react-dialog": "^1.1.15",
