@@ -1,21 +1,24 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { getAuth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import prismadb from "../../../../lib/prismadb";
 
+export const dynamic = "force-dynamic";
+
 export async function PATCH(
-    req: Request, { params }: { params: { companionId:
-        string }}
+  req: Request,
+  { params }: { params: { companionId: string } }
 ) {
   try {
     const body = await req.json();
     const user = await currentUser();
-    const { src, name, description, instructions, seed, categoryId } = body;
+
+    const { src, name, description, instructions, seed, categoryId } = body ?? {};
 
     if (!params.companionId) {
-        return new NextResponse("Companion ID is required", { status: 400 })
+      return new NextResponse("Companion ID is required", { status: 400 });
     }
 
-    if (!user || !user.id || !user.firstName) {
+    if (!user?.id || !user.firstName) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -23,10 +26,17 @@ export async function PATCH(
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
+    // Ensure ownership
+    const existing = await prismadb.companion.findFirst({
+      where: { id: params.companionId, userId: user.id },
+      select: { id: true },
+    });
+    if (!existing) {
+      return new NextResponse("Not found", { status: 404 });
+    }
+
     const companion = await prismadb.companion.update({
-        where: {
-            id: params.companionId,
-        },
+      where: { id: params.companionId, userId: user.id },
       data: {
         categoryId,
         userId: user.id,
@@ -41,7 +51,39 @@ export async function PATCH(
 
     return NextResponse.json(companion);
   } catch (error) {
-    console.log("[COMPANION_PATCH]", error);
+    console.error("[COMPANION_PATCH]", error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: { companionId: string } }
+) {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    if (!params.companionId) {
+      return new NextResponse("Companion ID is required", { status: 400 });
+    }
+
+    // Ensure it belongs to the caller
+    const existing = await prismadb.companion.findFirst({
+      where: { id: params.companionId, userId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return new NextResponse("Not found", { status: 404 });
+    }
+
+    await prismadb.companion.delete({ where: { id: params.companionId } });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    console.error("[COMPANION_DELETE]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
