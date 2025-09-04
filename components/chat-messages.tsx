@@ -1,62 +1,57 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, ElementRef } from "react";
 import { Companion } from "@prisma/client";
 import { ChatMessage, ChatMessageProps } from "./chat-message";
 
 interface ChatMessagesProps {
-    messages: ChatMessageProps[];
-    isLoading: boolean;
-    companion: Companion;
+  messages: ChatMessageProps[];
+  isLoading: boolean;
+  companion: Companion;
 }
 
 export const ChatMessages = ({
-    messages = [],
-    isLoading,
-    companion
+  messages = [],
+  isLoading,
+  companion,
 }: ChatMessagesProps) => {
+  const scrollRef = useRef<ElementRef<"div">>(null);
+  const [greetTyping, setGreetTyping] = useState(messages.length === 0);
 
-    const scrollRef = useRef<ElementRef<"div">>(null);
+  useEffect(() => {
+    const t = setTimeout(() => setGreetTyping(false), 1000);
+    return () => clearTimeout(t);
+  }, [messages.length]);
 
-    const [greetTyping, setGreetTyping] = useState(messages.length === 0 ? true : false);
+  useEffect(() => {
+    scrollRef?.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
 
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-            setGreetTyping(false)
-        }, 1000);
-        return () => {
-            clearTimeout(timeout); 
-        }
-    }, [messages.length]);
+  return (
+    <div className="flex-1 overflow-y-auto pr-4">
+      {/* Initial greeting */}
+      <ChatMessage
+        isLoading={greetTyping}
+        src={companion.src}
+        role="system"
+        content={`"Hey, I'm ${companion.name}, ${companion.description}`}
+      />
 
-    useEffect(() => {
-        scrollRef?.current?.scrollIntoView({ behavior: "smooth" });
-    }, []);
+      {/* Conversation */}
+      {messages.map((m, i) => (
+        <ChatMessage
+          key={`${i}-${m.role}-${(m.content ?? "").slice(0, 24)}`} // stable key even if content is empty
+          role={m.role}
+          content={m.content}
+          // Always pass avatar for bot messages
+          src={m.role !== "user" ? companion.src : undefined}
+        />
+      ))}
 
-    return ( 
-        <div className="flex-1 overflow-y-auto pr-4">
-            <ChatMessage 
-                isLoading={greetTyping}
-                src={companion.src}
-                role="system"
-                content={`"Hey, I'm ${companion.name}, ${companion.description}`}
-            />
-            {messages.map((message) => (
-                <ChatMessage 
-                    key={message.content}
-                    role={message.role}
-                    content={message.content}
-                    src={message.src}
-                />
-                ))}
-            {isLoading && (
-                <ChatMessage 
-                role="system"
-                src={companion.src}
-                isLoading
-            />
-        )}
-        <div ref={scrollRef} />
-        </div>
-     );
-}
+      {/* Typing bubble while waiting for server */}
+      {isLoading && <ChatMessage role="system" src={companion.src} isLoading />}
+
+      <div ref={scrollRef} />
+    </div>
+  );
+};

@@ -5,15 +5,15 @@ Purpose: Provide a simple "memory" layer for an AI companion.
 - Long-term memory: semantic recall via Pinecone + LangChain similarity search.
 
 Requirements (env):
-
 - UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN (for Redis.fromEnv())
-- PINECONE_API_KEY, PINECONE_ENVIRONMENT, PINECONE_INDEX (for Pinecone)
-- OPENAI_API_KEY (for embedding generation) */ 
+- PINECONE_API_KEY, PINECONE_INDEX (for Pinecone v2)
+- OPENAI_API_KEY (for embedding generation)
+*/
 
 import { Redis } from "@upstash/redis";
-import { OpenAIEmbeddings } from "langchain/embeddings/openai";
-import { PineconeClient } from "@pinecone-database/pinecone";
-import { PineconeStore } from "langchain/vectorstores/pinecone";
+import { OpenAIEmbeddings } from "@langchain/openai";
+import { Pinecone } from "@pinecone-database/pinecone";
+import { PineconeStore } from "@langchain/pinecone";
 
 export type CompanionKey = {
   companionName: string;
@@ -24,22 +24,29 @@ export type CompanionKey = {
 export class MemoryManager {
   private static instance: MemoryManager;
   private history: Redis;
-  private vectorDBClient: PineconeClient;
 
-  public constructor() {
-    // Initialize Redis from environment variables
+  // Pinecone v2 objects
+  private pinecone?: Pinecone;
+  private pineconeIndexName?: string;
+
+  private constructor() {
     this.history = Redis.fromEnv();
+    this.pineconeIndexName = process.env.PINECONE_INDEX || undefined;
   }
 
   /**
-   * Initialize Pinecone client using environment variables.
-   * IMPORTANT: This will only run if `this.vectorDBClient` is already an instance of PineconeClient.
+   * Lazy-init Pinecone v2 client and cache it.
    */
-  public async init() {
-    if (this.vectorDBClient instanceof PineconeClient) {
-      await this.vectorDBClient.init({
-        apiKey: process.env.PINECONE_API_KEY!,
-        environment: process.env.PINECONE_ENVIRONMENT!,
+  private ensurePinecone() {
+    if (!this.pinecone) {
+      if (!process.env.PINECONE_API_KEY) {
+        throw new Error("PINECONE_API_KEY is not set");
+      }
+      if (!this.pineconeIndexName) {
+        throw new Error("PINECONE_INDEX is not set");
+      }
+      this.pinecone = new Pinecone({
+        apiKey: process.env.PINECONE_API_KEY,
       });
     }
   }
@@ -55,37 +62,39 @@ export class MemoryManager {
     recentChatHistory: string,
     companionFileName: string
   ) {
-    // Cast to PineconeClient 
-    const pineconeClient = <PineconeClient>this.vectorDBClient;
+    try {
+      this.ensurePinecone();
+      const index = this.pinecone!.Index(this.pineconeIndexName!);
 
-    // Use configured index 
-    const pineconeIndex = pineconeClient.Index(
-      process.env.PINECONE_INDEX || ""
-    );
-
-    const vectorStore = await PineconeStore.fromExistingIndex(
-      new OpenAIEmbeddings({ openAIApiKey: process.env.OPENAI_API_KEY }),
-      { pineconeIndex }
-    );
-
-    // Top-3 most similar docs, filtered by fileName metadata
-    const similarDocs = await vectorStore
-      .similaritySearch(recentChatHistory, 3, { fileName: companionFileName })
-      .catch((err) => {
-        console.log("Failed to get vector search results", err);
+      const embeddings = new OpenAIEmbeddings({
+        apiKey: process.env.OPENAI_API_KEY,
       });
 
-    return similarDocs;
+      const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+        pineconeIndex: index,
+        // namespace: process.env.PINECONE_NAMESPACE, // optional
+      });
+
+      // Top-3 most similar docs, filtered by fileName metadata
+      const similarDocs = await vectorStore.similaritySearch(
+        recentChatHistory,
+        3,
+        { fileName: companionFileName }
+      );
+
+      return similarDocs;
+    } catch (err) {
+      console.log("Failed to get vector search results", err);
+      return [];
+    }
   }
 
   /**
    * Get or create the singleton instance of MemoryManager.
-   * Calls `init()` after constructing the instance.
    */
   public static async getInstance(): Promise<MemoryManager> {
     if (!MemoryManager.instance) {
       MemoryManager.instance = new MemoryManager();
-      await MemoryManager.instance.init();
     }
     return MemoryManager.instance;
   }
@@ -113,9 +122,10 @@ export class MemoryManager {
     return result;
   }
 
- 
-    // Read the latest chat history lines for this companion+user.
-
+  /**
+   * Read the latest chat history lines for this companion+user.
+   * Keeps last 30 entries, in chronological order.
+   */
   public async readLatestHistory(companionKey: CompanionKey): Promise<string> {
     if (!companionKey || typeof companionKey.userId === "undefined") {
       console.log("Companion key set incorrectly");
@@ -123,17 +133,14 @@ export class MemoryManager {
     }
     const key = this.generateRedisCompanionKey(companionKey);
 
-    // Read by score (0..now). This fetches all, then we keep last 30 below.
-    // (Original numeric bounds preserved.)
-    // eslint-disable-next-line prefer-const
+    // Read by score (0..now). Fetches all; then keep last 30 below.
     let result = await this.history.zrange(key, 0, Date.now(), {
       byScore: true,
     });
 
-    // Keep last 30, reverse to get newest-first...
-    result = result.slice(-30).reverse();
-    // ...then reverse again to return oldest-first (chronological).
-    const recentChats = result.reverse().join("\n");
+    // Keep last 30, return in chronological order
+    result = result.slice(-30);
+    const recentChats = result.join("\n");
     return recentChats;
   }
 
@@ -153,8 +160,7 @@ export class MemoryManager {
       return;
     }
 
-    const content = seedContent.split(delimiter);
-    // eslint-disable-next-line prefer-const
+    const content = (seedContent || "").split(delimiter);
     let counter = 0;
 
     for (const line of content) {

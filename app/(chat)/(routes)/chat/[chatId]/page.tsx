@@ -3,19 +3,21 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { ChatClient } from "./components/client";
 
-interface ChatIdPageProps {
-  params: { chatId: string };
-}
+// In your Next version, params is a Promise in server components.
+// Do NOT destructure in the function args; await inside.
+export default async function ChatIdPage(
+  context: { params: Promise<{ chatId: string }> }
+) {
+  const { chatId } = await context.params; // <-- important
 
-const ChatIdPage = async ({ params }: ChatIdPageProps) => {
-  const { userId, redirectToSignIn } = await auth(); // <-- await
+  const { userId, redirectToSignIn } = await auth();
 
   if (!userId) {
-    return redirectToSignIn({ returnBackUrl: `/chat/${params.chatId}` });
+    return redirectToSignIn({ returnBackUrl: `/chat/${chatId}` });
   }
 
   const companion = await prismadb.companion.findUnique({
-    where: { id: params.chatId },
+    where: { id: chatId },
     include: {
       messages: {
         orderBy: { createdAt: "asc" },
@@ -29,9 +31,9 @@ const ChatIdPage = async ({ params }: ChatIdPageProps) => {
     redirect("/");
   }
 
-  return(
-    <ChatClient companion={companion} />
-  );
-};
+  if (companion.seed && /^["'].*["']$/.test(companion.seed)) {
+    companion.seed = companion.seed.replace(/^["']|["']$/g, "");
+  }
 
-export default ChatIdPage;
+  return <ChatClient companion={companion} />;
+}
