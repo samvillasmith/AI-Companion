@@ -35,7 +35,7 @@ export const Navbar = () => {
                         "hidden md:block text-xl md:text-3xl font-bold text-priamary",
                         font.className
                         )}>
-                        hellofriend.ai
+                        friendvillage.ai
                     </h1>
                 </Link>
             </div>
