@@ -34,7 +34,7 @@ export const ChatMessages = ({
         isLoading={greetTyping}
         src={companion.src}
         role="system"
-        content={`"Hey, I'm ${companion.name}, ${companion.description}`}
+        content={`Hey, I'm ${companion.name}, a ${companion.description}.`}
       />
 
       {/* Conversation */}
