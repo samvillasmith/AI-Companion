@@ -2,13 +2,21 @@
 
 import { Home, Plus, Settings } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { usePremiumModal } from "../hooks/use-premium-modal";
 
 import { cn } from "../lib/utils";
 
-export const Sidebar = () => {
+interface SidebarPremium {
+    isPremium: boolean;
+}
+
+export const Sidebar = ({
+    isPremium
+}: SidebarPremium) => {
 
     const pathname = usePathname()
     const router = useRouter();
+    const premiumModal = usePremiumModal();
 
     const routes = [
         {
@@ -34,6 +42,10 @@ export const Sidebar = () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const onNavigate = (url: string, premium: boolean) => {
         //Check if Premium
+        if (premium && !isPremium){
+            return premiumModal.onOpen();
+        }
+
         return router.push(url);
     }
     return ( 
