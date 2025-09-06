@@ -5,6 +5,7 @@ import {
   ClerkProvider
 } from '@clerk/nextjs'
 import { Toaster } from "../components/ui/sonner";
+import { PremiumModal } from "../components/premium-modal";
 
 import { cn } from "../lib/utils";
 import { ThemeProvider } from "../components/theme-provider";
@@ -36,6 +37,7 @@ export default function RootLayout({
         className={`${cn("bg-secondary", geistSans.variable)} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <PremiumModal />
         {children}
           <Toaster />
         </ThemeProvider>
