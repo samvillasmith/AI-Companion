@@ -35,7 +35,7 @@ export const Navbar = () => {
                         "hidden md:block text-xl md:text-3xl font-bold text-priamary",
                         font.className
                         )}>
-                        friendvillage.ai
+                        Telmii
                     </h1>
                 </Link>
             </div>
