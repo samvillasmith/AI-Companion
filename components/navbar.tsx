@@ -1,3 +1,4 @@
+// components/navbar.tsx
 "use client";
 
 import { Sparkles } from "lucide-react";
@@ -12,15 +13,20 @@ import { usePremiumModal } from "../hooks/use-premium-modal";
 import { cn } from "@/lib/utils";
 
 const font = Poppins({
-    weight: "600",
-    subsets: ["latin"]
+  weight: "600",
+  subsets: ["latin"],
 });
 
-export const Navbar = () => {
-    const premiumModal = usePremiumModal();
+interface NavbarProps {
+  isPremium: boolean;
+}
 
-    return ( 
-        <div className="fixed 
+export const Navbar = ({ isPremium }: NavbarProps) => {
+  const premiumModal = usePremiumModal();
+
+  return (
+    <div
+      className="fixed 
         w-full 
         z-50 flex 
         justify-between 
@@ -30,27 +36,31 @@ export const Navbar = () => {
         border-b 
         border-primary/10 
         bg-secondary
-        h-16">
-            <div className="flex items-center">
-                <MobileSidebar />
-                <Link href="/">
-                    <h1 className={cn(
-                        "hidden md:block text-xl md:text-3xl font-bold text-priamary",
-                        font.className
-                        )}>
-                        Telmii
-                    </h1>
-                </Link>
-            </div>
-            <div className="flex items-center gap-x-3">
-                <Button onClick={premiumModal.onOpen} variant="premium" size="sm">
-                    Upgrade to Premium
-                    <Sparkles className="h-4 w-4 fill-white text-white"/>
-                </Button>
-                <ModeToggle />
-                <UserButton afterSignOutUrl="/" />
-            </div>
-        </div>
-     );
-}
-
+        h-16"
+    >
+      <div className="flex items-center">
+        <MobileSidebar />
+        <Link href="/">
+          <h1
+            className={cn(
+              "hidden md:block text-xl md:text-3xl font-bold text-primary",
+              font.className
+            )}
+          >
+            Telmii
+          </h1>
+        </Link>
+      </div>
+      <div className="flex items-center gap-x-3">
+        {!isPremium && (
+          <Button onClick={premiumModal.onOpen} variant="premium" size="sm">
+            Upgrade to Premium
+            <Sparkles className="h-4 w-4 fill-white text-white" />
+          </Button>
+        )}
+        <ModeToggle />
+        <UserButton afterSignOutUrl="/" />
+      </div>
+    </div>
+  );
+};
