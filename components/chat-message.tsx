@@ -13,8 +13,9 @@ export interface ChatMessageProps {
   role: "system" | "assistant" | "user";
   content?: string;
   isLoading?: boolean;
-  src?: string;
+  src?: string; 
 }
+
 
 export const ChatMessage = ({
   role,

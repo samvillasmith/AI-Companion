@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/chat/[chatId]/route.ts
 import dotenv from "dotenv";
 import { NextResponse } from "next/server";

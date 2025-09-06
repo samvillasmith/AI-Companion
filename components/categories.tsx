@@ -52,7 +52,7 @@ export const Categories = ({
                         !categoryId ? "bg-primary/25" : "bg-primary/10"
                     )}
                     >
-                    Newest
+                    All
             </button>
                         {data.map((item) => (
             <button 
