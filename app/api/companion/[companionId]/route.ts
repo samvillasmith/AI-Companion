@@ -1,6 +1,7 @@
 import { getAuth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import prismadb from "../../../../lib/prismadb";
+import { checkSubscription } from "../../../../lib/subscription";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,12 @@ export async function PATCH(
 
     if (!src || !name || !description || !instructions || !seed || !categoryId) {
       return new NextResponse("Missing required fields", { status: 400 });
+    }
+
+    const isPremium = await checkSubscription();
+
+    if (!isPremium){
+      return new NextResponse("Premium subscription required", { status: 403 })
     }
 
     // Ensure ownership

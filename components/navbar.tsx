@@ -47,14 +47,14 @@ export const Navbar = ({ isPremium }: NavbarProps) => {
               font.className
             )}
           >
-            Telmii
+            AI Friend Village
           </h1>
         </Link>
       </div>
       <div className="flex items-center gap-x-3">
         {!isPremium && (
           <Button onClick={premiumModal.onOpen} variant="premium" size="sm">
-            Upgrade to Premium
+            Upgrade
             <Sparkles className="h-4 w-4 fill-white text-white" />
           </Button>
         )}
