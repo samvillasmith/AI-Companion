@@ -106,10 +106,40 @@ export async function GET(req: NextRequest) {
 
     console.log("✅ [CONFIRM] upserted subscription", { userId, subId: sub.id });
 
-    // Redirect user back to the app; add a flag you can read for a toast if you like
-    const redirectTo = new URL("/", req.url);
-    redirectTo.searchParams.set("upgraded", "1");
-    return NextResponse.redirect(redirectTo, 303);
+    // IMPORTANT: Use a full URL redirect with hard reload
+    // This ensures the page loads fresh without any cached states
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.url.split('/api')[0];
+    const redirectUrl = `${baseUrl}/?upgraded=true&success=true&timestamp=${Date.now()}`;
+    
+    // Return HTML that forces a full page reload
+    return new NextResponse(
+      `<!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Payment Successful - Redirecting...</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+        </head>
+        <body>
+          <script>
+            // Force a hard reload to the success page
+            window.location.replace('${redirectUrl}');
+          </script>
+          <noscript>
+            <meta http-equiv="refresh" content="0; url=${redirectUrl}">
+          </noscript>
+        </body>
+      </html>`,
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (err: any) {
     console.error("❌ [CONFIRM] error:", err?.message);
     return new NextResponse(`Confirm failed: ${err.message}`, { status: 500 });
