@@ -1,5 +1,5 @@
 // components/subscription-button.tsx
-"use client"; 
+"use client";
 
 import { useState } from "react";
 import axios from "axios";
@@ -8,55 +8,52 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface SubscriptionButtonProps {
-    isPremium: boolean;
+  isPremium: boolean;
 }
 
-export const SubscriptionButton = ({
-    isPremium = false
+export const SubscriptionButton = ({ 
+  isPremium = false 
 }: SubscriptionButtonProps) => {
-    const [loading, setLoading] = useState(false);
-    
-    const onClick = async () => {
-        try {
-            setLoading(true);
-            
-            // Add a small delay to show loading state
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
-            const response = await axios.get("/api/stripe");
-            
-            if (response.data.url) {
-                // Use replace instead of href to prevent back button issues
-                window.location.replace(response.data.url);
-            } else {
-                throw new Error("No URL returned");
-            }
-        } catch (error) {
-            console.error("Subscription error:", error);
-            toast.error("Something went wrong. Please try again.");
-            setLoading(false);
-        } 
+  const [loading, setLoading] = useState(false);
+  
+  const onClick = async () => {
+    try {
+      setLoading(true);
+      
+      const response = await axios.get("/api/stripe");
+      
+      if (response.data.url) {
+        // Use standard navigation instead of replace
+        window.location.href = response.data.url;
+      } else {
+        throw new Error("No URL returned");
+      }
+    } catch (error) {
+      console.error("Subscription error:", error);
+      toast.error("Something went wrong. Please try again.");
+      setLoading(false);
     }
-    
-    return(
-        <Button 
-            disabled={loading} 
-            onClick={onClick} 
-            size="sm" 
-            variant={isPremium ? "default": "premium"}
-            className="min-w-[140px]"
-        >
-            {loading ? (
-                <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Loading...
-                </>
-            ) : (
-                <>
-                    {isPremium ? "Manage Subscription" : "Upgrade"}
-                    {!isPremium && <Sparkles className="h-4 ml-2 fill-white"/>}
-                </>
-            )}
-        </Button>
-    )  
-}
+  }
+  
+  return (
+    <Button 
+      disabled={loading} 
+      onClick={onClick}
+      size="sm"
+      variant={isPremium ? "default": "premium"}
+      className="min-w-[140px]"
+    >
+      {loading ? (
+        <>
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          Loading...
+        </>
+      ) : (
+        <>
+          {isPremium ? "Manage Subscription" : "Upgrade"}
+          {!isPremium && <Sparkles className="h-4 ml-2 fill-white"/>}
+        </>
+      )}
+    </Button>
+  );
+};

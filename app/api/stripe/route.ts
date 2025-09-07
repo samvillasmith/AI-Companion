@@ -1,91 +1,70 @@
 // app/api/stripe/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { getAuth, clerkClient, currentUser } from "@clerk/nextjs/server";
-
-import prismadb from "@/lib/prismadb";
+import { auth, currentUser } from "@clerk/nextjs/server"; // Note: /server not just @clerk/nextjs
+import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { absolute } from "@/lib/utils";
+import { absoluteUrl } from "@/lib/utils";
+import prismadb from "@/lib/prismadb";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-const successConfirmUrl = absolute("/api/stripe/confirm?session_id={CHECKOUT_SESSION_ID}");
-
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const { userId } = getAuth(req);
-    if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+    const { userId } = await auth(); // Note: await auth() for server components
+    const user = await currentUser();
 
-    // If customer exists, send to Billing Portal
+    if (!userId || !user) {
+      console.log("Auth failed - userId:", userId, "user:", !!user);
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const settingsUrl = absoluteUrl("/settings");
+
     const userSubscription = await prismadb.userSubscription.findUnique({
-      where: { userId },
-    });
-
-    if (userSubscription?.stripeCustomerId) {
-      // FIXED: Direct return to /settings instead of going through API route
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.url.split('/api')[0];
-      const returnUrl = `${baseUrl}/settings`;
-      
-      const portal = await stripe.billingPortal.sessions.create({
-        customer: userSubscription.stripeCustomerId,
-        return_url: returnUrl,
-      });
-      
-      return NextResponse.json({ url: portal.url });
-    }
-
-    // Optional email for Checkout
-    let email: string | undefined;
-    try {
-      const clerk = await clerkClient();
-      const user = await clerk.users.getUser(userId);
-      email =
-        user.primaryEmailAddress?.emailAddress ??
-        user.emailAddresses[0]?.emailAddress ??
-        undefined;
-
-      if (!email) {
-        const cu = await currentUser();
-        email =
-          cu?.primaryEmailAddress?.emailAddress ??
-          cu?.emailAddresses?.[0]?.emailAddress ??
-          undefined;
+      where: {
+        userId
       }
-    } catch {
-      // proceed without email; Stripe will collect it
-    }
-
-    const lineItem = process.env.STRIPE_PRICE_ID
-      ? { price: process.env.STRIPE_PRICE_ID, quantity: 1 as const }
-      : {
-          quantity: 1 as const,
-          price_data: {
-            currency: "usd",
-            unit_amount: 1999,
-            recurring: { interval: "month" as const },
-            product_data: {
-              name: "Premium Companion Access",
-              description: "Create Your Own Custom AI Companions",
-            },
-          },
-        };
-
-    const checkout = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      success_url: successConfirmUrl,
-      cancel_url: absolute("/"),
-      billing_address_collection: "auto",
-      customer_email: email,
-      line_items: [lineItem],
-      subscription_data: {
-        metadata: { userId },
-      },
-      metadata: { userId },
     });
 
-    return NextResponse.json({ url: checkout.url });
+    // Existing subscription - billing portal
+    if (userSubscription && userSubscription.stripeCustomerId) {
+      const stripeSession = await stripe.billingPortal.sessions.create({
+        customer: userSubscription.stripeCustomerId,
+        return_url: settingsUrl,
+      });
+
+      return NextResponse.json({ url: stripeSession.url });
+    }
+
+    // New subscription - checkout
+    const stripeSession = await stripe.checkout.sessions.create({
+      success_url: settingsUrl,
+      cancel_url: settingsUrl,
+      payment_method_types: ["card"],
+      mode: "subscription",
+      billing_address_collection: "auto",
+      customer_email: user.emailAddresses[0].emailAddress,
+      line_items: [
+        {
+          price_data: {
+            currency: "USD",
+            product_data: {
+              name: "AI Companion Premium",
+              description: "Unlimited AI Companion Messages"
+            },
+            unit_amount: 999,
+            recurring: {
+              interval: "month"
+            }
+          },
+          quantity: 1,
+        }
+      ],
+      metadata: {
+        userId,
+      }
+    });
+
+    return NextResponse.json({ url: stripeSession.url });
   } catch (error) {
-    console.error("[STRIPE_GET]", error);
-    return new NextResponse("Internal error", { status: 500 });
+    console.error("[STRIPE_GET] Error:", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 }

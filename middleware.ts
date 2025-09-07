@@ -1,15 +1,27 @@
+// middleware.ts
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/sign-in(.*)',
   '/api/webhook',
-  '/api/stripe/confirm',
-  '/api/stripe/portal-return',  
-  '/public' 
+  '/api/stripe',
+  '/',  // Add root as public
 ])
 
 export default clerkMiddleware(async (auth, req) => {
+  // Skip auth for Stripe return URLs to prevent redirect loops
+  const url = new URL(req.url);
+  
+  // If coming back from Stripe (has session_id or other Stripe params)
+  if (url.pathname === '/settings' && 
+      (url.searchParams.has('session_id') || 
+       url.searchParams.has('success') ||
+       url.searchParams.has('canceled'))) {
+    // Let it through without auth check temporarily
+    return;
+  }
+  
   if (!isPublicRoute(req)) {
     await auth.protect()
   }
