@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { toast } from "sonner";
@@ -31,7 +32,6 @@ export const ChatMessage = ({ role, content, isLoading, src }: ChatMessageProps)
       <div
         className={cn(
           "rounded-lg px-4 py-2 max-w-[75%] text-sm shadow-sm border",
-          // Light mode: high-contrast neutrals; Dark mode: soft glass
           isUser
             ? "bg-accent text-foreground border-border dark:bg-white/10 dark:text-foreground dark:border-white/10"
             : "bg-muted text-foreground border-border dark:bg-white/5 dark:text-foreground dark:border-white/10"
@@ -48,6 +48,7 @@ export const ChatMessage = ({ role, content, isLoading, src }: ChatMessageProps)
           className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-foreground"
           size="icon"
           variant="ghost"
+          aria-label="Copy message"
         >
           <Copy className="w-4 h-4" />
         </Button>
