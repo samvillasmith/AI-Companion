@@ -3,8 +3,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { ChatClient } from "./components/client";
 
-// In your Next version, params is a Promise in server components.
-// Do NOT destructure in the function args; await inside.
 export default async function ChatIdPage(
   context: { params: Promise<{ chatId: string }> }
 ) {

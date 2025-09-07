@@ -1,21 +1,42 @@
+"use client";
+
 import { Menu } from "lucide-react";
+import { useState } from "react";
+import { Sidebar } from "@/components/sidebar";
+import { Button } from "@/components/ui/button";
 
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "../components/ui/sheet";
-import { Sidebar } from "../components/sidebar";
+interface MobileSidebarProps {
+  isPremium: boolean;
+}
 
-export const MobileSidebar = () => {
-    return ( 
-        <Sheet>
-            <SheetTrigger className="md:hidden pr-4">
-                <Menu />
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 bg-secondary pt-10 w-32">
-                <Sidebar />
-            </SheetContent>
-        </Sheet>
-     );
+export function MobileSidebar({ isPremium }: MobileSidebarProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="md:hidden">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Open menu"
+        onClick={() => setOpen(true)}
+      >
+        <Menu className="h-6 w-6" />
+      </Button>
+
+      {/* super minimal sheet; replace with your Sheet component if you have one */}
+      {open && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/60"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="absolute inset-y-0 left-0 w-64 bg-background p-3 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Sidebar isPremium={isPremium} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

@@ -2,9 +2,13 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-// Reuse a single limiter instance (nice during dev/hot reload)
+declare global {
+  // eslint-disable-next-line no-var
+  var __appRateLimiter: Ratelimit | undefined;
+}
+
 const rl =
-  (globalThis as any).__appRateLimiter ??
+  global.__appRateLimiter ??
   new Ratelimit({
     redis: Redis.fromEnv(),
     limiter: Ratelimit.slidingWindow(10, "10 s"), // 10 requests / 10 seconds
@@ -12,8 +16,8 @@ const rl =
     prefix: "ratelimit:chat",
   });
 
-if (!(globalThis as any).__appRateLimiter) {
-  (globalThis as any).__appRateLimiter = rl;
+if (!global.__appRateLimiter) {
+  global.__appRateLimiter = rl;
 }
 
 export async function rateLimit(identifier: string) {

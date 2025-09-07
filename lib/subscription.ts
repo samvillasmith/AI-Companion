@@ -1,4 +1,5 @@
-// lib/subscription.ts
+import "server-only";
+
 import { auth } from "@clerk/nextjs/server";
 import prismadb from "@/lib/prismadb";
 

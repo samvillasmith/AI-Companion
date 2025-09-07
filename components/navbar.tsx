@@ -28,7 +28,7 @@ export const Navbar = ({ isPremium }: NavbarProps) => {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-indigo-500/25 to-transparent dark:via-fuchsia-500/40" />
 
       <div className="flex items-center gap-2">
-        <MobileSidebar />
+        <MobileSidebar isPremium={isPremium}/>
         <Link href="/" className="select-none">
           <h1
             className={cn(

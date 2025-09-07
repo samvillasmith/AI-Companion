@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/api/stripe/confirm/route.ts
-import { NextResponse } from "next/server";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import Stripe from "stripe";
+import type Stripe from "stripe";
+import { NextRequest, NextResponse } from "next/server";
 
 import { stripe } from "@/lib/stripe";
 import prismadb from "@/lib/prismadb";
@@ -11,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function toDate(sec?: number | null) {
-  return sec ? new Date(sec * 1000) : null;
+  return typeof sec === "number" ? new Date(sec * 1000) : null;
 }
 
 async function upsertUserSub(args: {
@@ -41,7 +39,7 @@ async function upsertUserSub(args: {
   });
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const sessionId = url.searchParams.get("session_id");
@@ -79,14 +77,31 @@ export async function GET(req: Request) {
     }
 
     // Pull subscription to get canonical values
-    const sub = await stripe.subscriptions.retrieve(subscriptionId);
+    const subResp = await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ["items.data.price", "customer"],
+    });
+
+    // Narrow types the safe way: some Stripe @types revisions omit `current_period_end`
+    type SubscriptionWithPeriod = Stripe.Subscription & {
+      current_period_end?: number | null;
+    };
+    const sub = subResp as unknown as SubscriptionWithPeriod;
+
+    const customerId =
+      typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+
+    const firstItem = sub.items.data[0];
+    const price = firstItem.price;
+    const priceId = typeof price === "string" ? price : price.id;
+
+    const periodEnd = toDate(sub.current_period_end ?? null);
 
     await upsertUserSub({
       userId,
-      customerId: sub.customer as string,
+      customerId,
       subId: sub.id,
-      priceId: sub.items.data[0].price.id,
-      periodEnd: toDate(sub.current_period_end),
+      priceId,
+      periodEnd,
     });
 
     console.log("✅ [CONFIRM] upserted subscription", { userId, subId: sub.id });
