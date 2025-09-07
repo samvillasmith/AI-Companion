@@ -180,3 +180,63 @@ html, body, :root { height: 100%; }
 /* Hide horizontal scrollbars for chip rows */
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Add to your global CSS file (globals.css or app.css) */
+
+/* Prevent body scrolling on mobile chat pages */
+body.chat-active {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* iOS-specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific styles */
+  .chat-container {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+}
+
+/* Ensure proper viewport height on mobile */
+:root {
+  --viewport-height: 100vh;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --viewport-height: 100dvh;
+  }
+}
+
+/* Smooth transitions for keyboard appearance */
+* {
+  transition: padding-bottom 0.3s ease-out;
+}
+
+/* Prevent text selection on mobile UI elements */
+.chat-header,
+.chat-composer {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Ensure textarea doesn't zoom on iOS when focused */
+textarea {
+  font-size: 16px !important;
+}
+
+/* Improve scroll performance */
+.chat-messages-container {
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+}
+
+/* Fix for mobile keyboard pushing content */
+.keyboard-open .chat-messages-container {
+  padding-bottom: 0;
+}
