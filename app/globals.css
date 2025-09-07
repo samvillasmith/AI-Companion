@@ -1,6 +1,20 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Critical viewport fix - MUST BE FIRST */
+@layer base {
+  html, body {
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  
+  body {
+    min-width: 100vw !important;
+    transform: none !important;
+    zoom: 1 !important;
+  }
+}
+
 /* base heights */
 html, body, :root { height: 100%; }
 
