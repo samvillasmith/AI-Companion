@@ -27,7 +27,9 @@ export const PremiumModal = () => {
   const onSubscribe = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/stripe");
+      const response = await axios.get("/api/stripe", {
+        withCredentials: true, // Ensure cookies are sent
+      });
       if (response.data?.url) {
         window.location.href = response.data.url;
       } else {
