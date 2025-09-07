@@ -10,21 +10,10 @@ import { MemoryManager } from "@/lib/memory";
 import { rateLimit } from "@/lib/rate-limit";
 import prismadb from "@/lib/prismadb";
 
-// OpenAI client (single-arg use later)
+// Use the AI SDK client (do NOT pass a second arg to openai())
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY ?? "",
 });
-
-// crude detector: did the last assistant reply contain a question?
-function askedAQuestionRecently(history: string): boolean {
-  const lines = history.split("\n").map((l) => l.trim()).filter(Boolean).reverse();
-  for (const line of lines) {
-    if (line.startsWith("User:")) return false;      // hit a user line first → no recent assistant question
-    // first non-user line is the last assistant reply in this scheme
-    return line.includes("?");
-  }
-  return false;
-}
 
 export async function POST(
   request: NextRequest,
@@ -62,7 +51,7 @@ export async function POST(
     const companionKey = {
       companionName: companion.id,
       userId: user.id,
-      modelName: "gpt-5-thinking",
+      modelName: "gpt-4o-mini",
     };
 
     const memoryManager = await MemoryManager.getInstance();
@@ -80,11 +69,6 @@ export async function POST(
     // short-term memory (recent transcript)
     const recentChatHistory = await memoryManager.readLatestHistory(companionKey);
 
-    // compute question allowance
-    const userBansQuestions = /no questions|stop asking/i.test(prompt ?? "");
-    const askedRecently = askedAQuestionRecently(recentChatHistory);
-    const questionAllowance = userBansQuestions ? 0 : askedRecently ? 0 : 1;
-
     // long-term memory (RAG)
     const similarDocs = await memoryManager.vectorSearch(
       recentChatHistory,
@@ -95,20 +79,25 @@ export async function POST(
         ? similarDocs.map((d: any) => d.pageContent).join("\n")
         : "";
 
-    // system prompt
+    // system prompt — updated to sound more human and ask fewer questions
     const systemPrompt = `
-You are ${displayName}, a supportive companion. Speak naturally and concisely (1–2 short paragraphs). Offer commentary and suggestions; avoid sounding like an interviewer.
+You are ${displayName}, a warm, human-sounding companion. Talk like a friend, not a therapist.
 
-QUESTION POLICY (must obey):
-- Maximum questions you may ask in this reply: ${questionAllowance}.
-- Do not ask questions in two consecutive assistant replies.
-- If maximum is 0, do not ask any question at all; avoid rhetorical questions and avoid '?'.
+QUESTION POLICY (must follow):
+- Default: ask 0–1 short question per reply (max one “?”).
+- Never ask questions in two consecutive replies.
+- Only ask if it clearly helps; otherwise make a statement.
+- If the user says “no questions”, “just comment”, or similar, ask none until invited.
+- No rhetorical questions.
 
 STYLE:
-- Use contractions and vary rhythm.
-- Prefer statements. When giving options, list at most 2–3.
-- Avoid repeating stock openers (e.g., "It sounds like...").
-- Keep boundaries; decline unsafe content kindly.
+- 1–3 short sentences (≤80 words). Use contractions. Vary rhythm. Avoid filler.
+- Prefer statements and commentary. Mirror the user’s tone and vocabulary.
+- Don’t repeat empathy templates (skip “It sounds like…”, “I understand how you feel”).
+- When giving ideas, offer 2–3 concise options, then stop (don’t follow with a question).
+- Avoid disclaimers; keep healthy boundaries and decline unsafe content kindly.
+
+ONLY generate plain sentences without any "Speaker:" prefixes.
 
 Persona / instructions:
 ${(companion.instructions ?? companion.seed ?? "").trim()}
@@ -122,19 +111,17 @@ ${recentChatHistory || "—"}
 
     // ---- NON-STREAMED GENERATION ----
     const { text } = await generateText({
-      model: openai("gpt-5-thinking"),
+      model: openai("gpt-4o-mini"), // client above carries the key
       system: systemPrompt,
-      prompt,                         // latest user message only
-      temperature: 0.7,
+      prompt,                       // latest user message only
+      temperature: 0.8,
       topP: 0.9,
-      frequencyPenalty: 0.5,          // reduce repetitiveness / question spam
-      presencePenalty: 0.1,
       maxOutputTokens: 500,
     });
 
-    const response = (text ?? "").trim() || "Okay. I’m here.";
+    const response = (text ?? "").trim() || "Okay.";
 
-    // persist assistant reply
+    // persist assistant reply (DB still uses "system"; UI maps to avatar)
     await memoryManager.writeToHistory(response, companionKey);
     await prismadb.companion.update({
       where: { id: chatId },
@@ -145,6 +132,7 @@ ${recentChatHistory || "—"}
       },
     });
 
+    // return plain text (what your client expects)
     return new Response(response, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
