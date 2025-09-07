@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     
     // Force a hard reload to the settings page
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.url.split('/api')[0];
-    const redirectUrl = `${baseUrl}/settings`;
+    const redirectUrl = `${baseUrl}/`;
     
     // Return HTML that forces a complete page reload
     return new NextResponse(
