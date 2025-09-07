@@ -44,7 +44,7 @@ export async function GET() {
               name: "AI Companion Premium",
               description: "Unlimited AI Companion Messages"
             },
-            unit_amount: 999,
+            unit_amount: 1999,
             recurring: {
               interval: "month"
             }
