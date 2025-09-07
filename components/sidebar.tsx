@@ -1,7 +1,7 @@
 "use client";
 
 import { Home, Plus, Settings } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { usePremiumModal } from "../hooks/use-premium-modal";
 import { cn } from "../lib/utils";
 
@@ -11,7 +11,6 @@ interface SidebarPremium {
 
 export const Sidebar = ({ isPremium }: SidebarPremium) => {
   const pathname = usePathname();
-  const router = useRouter();
   const premiumModal = usePremiumModal();
 
   const routes = [
@@ -21,8 +20,16 @@ export const Sidebar = ({ isPremium }: SidebarPremium) => {
   ];
 
   const onNavigate = (url: string, premium: boolean) => {
-    if (premium && !isPremium) return premiumModal.onOpen();
-    return router.push(url);
+    if (premium && !isPremium) {
+      return premiumModal.onOpen();
+    }
+    // Force hard navigation for Home and Settings to prevent layout issues
+    if (url === "/" || url === "/settings") {
+      window.location.href = url;
+    } else {
+      // Use regular navigation for other routes
+      window.location.href = url;
+    }
   };
 
   return (
