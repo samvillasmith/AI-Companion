@@ -9,7 +9,7 @@ export default function Page() {
   const cardWrapRef = useRef<HTMLDivElement | null>(null);
   const [{ top, height }, setBox] = useState({ top: 0, height: 0 });
 
-  // read ?redirect_url=..., default to /settings
+  // honor ?redirect_url=... else default to /settings
   const searchParams = useSearchParams();
   const target = searchParams.get("redirect_url") || "/settings";
 
@@ -35,14 +35,21 @@ export default function Page() {
   }, []);
 
   return (
-    <div className="relative min-h-screen text-white bg-[#0b0b0d]">
+    <div className="relative text-white bg-[#0b0b0d]">
+      {/* MOBILE NAVBAR — bigger and lower brand */}
+      <nav className="sm:hidden fixed inset-x-0 top-0 z-30 h-20 pt-[env(safe-area-inset-top)] flex items-end justify-center pb-2 bg-[#0b0b0d]/80 backdrop-blur-md border-b border-white/5">
+        <span className="text-4xl font-extrabold tracking-wide bg-gradient-to-r from-sky-400 via-indigo-400 to-fuchsia-400 bg-clip-text text-transparent">
+          TELMII
+        </span>
+      </nav>
+
       {/* background wash */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-20">
         <div className="absolute inset-0 opacity-80 bg-[radial-gradient(1200px_800px_at_50%_-10%,rgba(59,130,246,0.20),transparent_70%)]" />
         <div className="absolute inset-0 mix-blend-screen opacity-70 bg-[conic-gradient(from_120deg_at_50%_50%,rgba(99,102,241,0.18),rgba(217,70,239,0.18),rgba(236,72,153,0.18),rgba(99,102,241,0.18))]" />
       </div>
 
-      {/* EDGE IMAGES — match card top/height, desktop only */}
+      {/* EDGE IMAGES — desktop only */}
       <div
         aria-hidden
         className="pointer-events-none hidden lg:block fixed left-4 z-0"
@@ -78,39 +85,58 @@ export default function Page() {
         </div>
       </div>
 
-      {/* CENTER CONTENT */}
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pt-10 pb-40">
-        <div className="w-full max-w-md mx-auto text-center" ref={cardWrapRef}>
-          <h1 className="mb-2 text-4xl sm:text-5xl font-extrabold tracking-wide bg-gradient-to-r from-sky-400 via-indigo-400 to-fuchsia-400 bg-clip-text text-transparent">
+      {/* VIEWPORT — safe-area aware top padding so card never sits under navbar */}
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-32 sm:pb-40 min-h-[100svh] sm:min-h-screen overflow-hidden flex flex-col">
+        {/* DESKTOP TITLE (mobile title is in navbar) */}
+        <div className="hidden sm:block text-center pt-10">
+          <h1 className="mb-2 text-5xl font-extrabold tracking-wide bg-gradient-to-r from-sky-400 via-indigo-400 to-fuchsia-400 bg-clip-text text-transparent">
             TELMII
           </h1>
           <p className="mb-6 text-sm text-white/75">Create & chat with custom AI companions.</p>
+        </div>
 
-          {/* If already signed in, skip rendering <SignIn/> and go straight to target */}
+        {/* CENTER — add top padding equal to mobile navbar height */}
+        <div
+          ref={cardWrapRef}
+          className="flex-1 flex items-center justify-center pt-[calc(env(safe-area-inset-top)+6rem)] sm:pt-0"
+        >
+          {/* If already signed in, skip the card entirely */}
           <SignedIn>
             <ImmediateRedirect to={target} />
           </SignedIn>
 
-          {/* If signed out, render your styled Clerk SignIn */}
+          {/* Signed-out view — styled SignIn, perfectly centered */}
           <SignedOut>
-            <SignIn
-              forceRedirectUrl={target}
-              fallbackRedirectUrl={target}
-              appearance={{
-                elements: {
-                  card: "shadow-none border-0 bg-transparent p-0",
-                  headerTitle: "text-center",
-                  headerSubtitle: "text-center",
-                },
-              }}
-            />
+            <div className="w-full max-w-[420px] mx-auto">
+              <SignIn
+                forceRedirectUrl={target}
+                fallbackRedirectUrl={target}
+                appearance={{
+                  elements: {
+                    rootBox: "w-full flex justify-center",
+                    card:
+                      "w-full max-w-[420px] mx-auto shadow-none border-0 bg-transparent p-0",
+                    headerTitle: "text-center",
+                    headerSubtitle: "text-center",
+                  },
+                }}
+              />
+            </div>
           </SignedOut>
         </div>
       </div>
 
-      {/* bullets */}
-      <div className="fixed inset-x-0 bottom-20 sm:bottom-24 px-4">
-        <ul className="mx-auto max-w-6xl flex flex-wrap justify-center items-center gap-x-6 gap-y-3">
+      {/* BULLETS — fixed at bottom, safe-area padding */}
+      <div className="fixed inset-x-0 bottom-10 z-20 px-4 pb-[env(safe-area-inset-bottom)]">
+        <ul className="sm:hidden mx-auto max-w-6xl grid grid-cols-2 gap-x-4 gap-y-3 pb-4">
+          <Bullet>Built for mobile</Bullet>
+          <Bullet>Private & secure</Bullet>
+          <Bullet>Mentors & coaching</Bullet>
+          <Bullet>Travel planning</Bullet>
+          <Bullet>Movies & TV chat</Bullet>
+          <Bullet>Music discovery</Bullet>
+        </ul>
+        <ul className="hidden sm:flex mx-auto max-w-6xl flex-wrap justify-center items-center gap-x-6 gap-y-3">
           <Bullet>Create companions</Bullet>
           <Bullet>Pick categories</Bullet>
           <Bullet>Customize vibes</Bullet>
@@ -126,11 +152,26 @@ export default function Page() {
         </ul>
       </div>
 
-      <style>{`.cl-footer{display:none !important;}`}</style>
+      {/* GLOBAL OVERRIDES: keep card centered on tiny viewports */}
+      <style>{`
+        .cl-card {
+          margin-left: auto !important;
+          margin-right: auto !important;
+          max-width: 420px !important;
+          width: calc(100vw - 2rem) !important; /* honors page px-4 */
+        }
+        @supports (padding: max(0px)) {
+          .cl-card {
+            width: calc(100vw - max(2rem, env(safe-area-inset-left) + env(safe-area-inset-right))) !important;
+          }
+        }
+        .cl-footer{display:none !important;}
+      `}</style>
     </div>
   );
 }
 
+/** immediate client-side redirect for already-signed-in users */
 function ImmediateRedirect({ to }: { to: string }) {
   const router = useRouter();
   useEffect(() => {

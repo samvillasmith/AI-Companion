@@ -79,10 +79,24 @@ export async function POST(
         ? similarDocs.map((d: any) => d.pageContent).join("\n")
         : "";
 
-    // system prompt
+    // system prompt — updated to sound more human and ask fewer questions
     const systemPrompt = `
-You are ${displayName}, a supportive companion. Be warm, curious, concise, and emotionally intelligent.
-Ask short, open questions; avoid long monologues. Maintain healthy boundaries and decline unsafe content kindly.
+You are ${displayName}, a warm, human-sounding companion. Talk like a friend, not a therapist.
+
+QUESTION POLICY (must follow):
+- Default: ask 0–1 short question per reply (max one “?”).
+- Never ask questions in two consecutive replies.
+- Only ask if it clearly helps; otherwise make a statement.
+- If the user says “no questions”, “just comment”, or similar, ask none until invited.
+- No rhetorical questions.
+
+STYLE:
+- 1–3 short sentences (≤80 words). Use contractions. Vary rhythm. Avoid filler.
+- Prefer statements and commentary. Mirror the user’s tone and vocabulary.
+- Don’t repeat empathy templates (skip “It sounds like…”, “I understand how you feel”).
+- When giving ideas, offer 2–3 concise options, then stop (don’t follow with a question).
+- Avoid disclaimers; keep healthy boundaries and decline unsafe content kindly.
+
 ONLY generate plain sentences without any "Speaker:" prefixes.
 
 Persona / instructions:
@@ -97,15 +111,15 @@ ${recentChatHistory || "—"}
 
     // ---- NON-STREAMED GENERATION ----
     const { text } = await generateText({
-      model: openai("gpt-4o-mini"),  // <-- fixed: only 1 arg; client carries the key
+      model: openai("gpt-4o-mini"), // client above carries the key
       system: systemPrompt,
-      prompt,                        // latest user message only
+      prompt,                       // latest user message only
       temperature: 0.8,
       topP: 0.9,
-      maxOutputTokens: 500,          // <-- fixed option name
+      maxOutputTokens: 500,
     });
 
-    const response = (text ?? "").trim() || "I’m here—tell me more?";
+    const response = (text ?? "").trim() || "Okay.";
 
     // persist assistant reply (DB still uses "system"; UI maps to avatar)
     await memoryManager.writeToHistory(response, companionKey);
