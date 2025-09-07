@@ -2,11 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { SignIn } from "@clerk/nextjs";
+import { SignIn, SignedIn, SignedOut } from "@clerk/nextjs";
+import { useSearchParams, useRouter } from "next/navigation";
 
 export default function Page() {
   const cardWrapRef = useRef<HTMLDivElement | null>(null);
   const [{ top, height }, setBox] = useState({ top: 0, height: 0 });
+
+  // read ?redirect_url=..., default to /settings
+  const searchParams = useSearchParams();
+  const target = searchParams.get("redirect_url") || "/settings";
 
   useEffect(() => {
     const update = () => {
@@ -79,17 +84,27 @@ export default function Page() {
           <h1 className="mb-2 text-4xl sm:text-5xl font-extrabold tracking-wide bg-gradient-to-r from-sky-400 via-indigo-400 to-fuchsia-400 bg-clip-text text-transparent">
             TELMII
           </h1>
-        <p className="mb-6 text-sm text-white/75">Create & chat with custom AI companions.</p>
+          <p className="mb-6 text-sm text-white/75">Create & chat with custom AI companions.</p>
 
-          <SignIn
-            appearance={{
-              elements: {
-                card: "shadow-none border-0 bg-transparent p-0",
-                headerTitle: "text-center",
-                headerSubtitle: "text-center",
-              },
-            }}
-          />
+          {/* If already signed in, skip rendering <SignIn/> and go straight to target */}
+          <SignedIn>
+            <ImmediateRedirect to={target} />
+          </SignedIn>
+
+          {/* If signed out, render your styled Clerk SignIn */}
+          <SignedOut>
+            <SignIn
+              forceRedirectUrl={target}
+              fallbackRedirectUrl={target}
+              appearance={{
+                elements: {
+                  card: "shadow-none border-0 bg-transparent p-0",
+                  headerTitle: "text-center",
+                  headerSubtitle: "text-center",
+                },
+              }}
+            />
+          </SignedOut>
         </div>
       </div>
 
@@ -114,6 +129,14 @@ export default function Page() {
       <style>{`.cl-footer{display:none !important;}`}</style>
     </div>
   );
+}
+
+function ImmediateRedirect({ to }: { to: string }) {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace(to);
+  }, [router, to]);
+  return null;
 }
 
 function Bullet({ children }: { children: React.ReactNode }) {
