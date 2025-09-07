@@ -6,13 +6,6 @@ import { Button } from "./ui/button";
 import { SendHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/**
- * ChatComposer
- * - Stays pinned at the bottom of the screen
- * - Keyboard-aware on iOS (uses CSS var --kb set by ChatMessages via visualViewport)
- * - Self-measures (data-chat-composer) so ChatMessages can compute exact height
- * - Auto-resizes textarea up to 6 rows; Enter sends, Shift+Enter makes a newline
- */
 export function ChatComposer({
   className,
   placeholder = "Write your message...",
@@ -29,13 +22,14 @@ export function ChatComposer({
   const [value, setValue] = React.useState("");
   const taRef = React.useRef<HTMLTextAreaElement | null>(null);
 
-  // autosize textarea up to 6 rows
+  // Autosize textarea up to 4 rows (better for mobile)
   React.useEffect(() => {
     const el = taRef.current;
     if (!el) return;
-    el.style.height = "0px";
-    const next = Math.min(el.scrollHeight, 6 * 24 + 20); // 6 rows (roughly)
-    el.style.height = next + "px";
+    el.style.height = "40px"; // Reset to single line height
+    const maxHeight = 4 * 24; // 4 rows max
+    const newHeight = Math.min(el.scrollHeight, maxHeight);
+    el.style.height = newHeight + "px";
   }, [value]);
 
   const doSend = async () => {
@@ -53,53 +47,43 @@ export function ChatComposer({
   };
 
   return (
-    <div
-      data-chat-composer
+    <div 
       className={cn(
-        // sticky bottom bar; spans full width (matching page padding via negative margins)
-        "sticky z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 py-3",
-        "bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-t border-border",
+        "flex-shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-t border-border",
         className
       )}
-      // sit above the iOS home indicator + keyboard (var(--kb) is set by ChatMessages)
-      style={{ bottom: "calc(env(safe-area-inset-bottom) + var(--kb, 0px))" }}
+      style={{
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
     >
-      <div className="mx-auto w-full max-w-2xl">
-        <div className="flex items-end gap-2">
+      <div className="px-4 py-3">
+        <div className="flex items-end gap-2 max-w-2xl mx-auto">
           <div className="flex-1">
-            <label htmlFor="chat-input" className="sr-only">
-              Message
-            </label>
-            <div
+            <textarea
+              ref={taRef}
+              value={value}
+              placeholder={placeholder}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={onKeyDown}
               className={cn(
-                "rounded-2xl border border-border bg-muted/60 dark:bg-white/5",
-                "px-3 py-2"
+                "w-full resize-none bg-muted/60 dark:bg-white/5",
+                "rounded-2xl border border-border",
+                "px-4 py-2.5",
+                "text-foreground placeholder:text-muted-foreground",
+                "outline-none focus:ring-2 focus:ring-primary/20",
+                "min-h-[40px] leading-6"
               )}
-            >
-              <textarea
-                id="chat-input"
-                ref={taRef}
-                value={value}
-                placeholder={placeholder}
-                onChange={(e) => setValue(e.target.value)}
-                onKeyDown={onKeyDown}
-                rows={1}
-                className={cn(
-                  "w-full resize-none bg-transparent outline-none",
-                  "text-foreground placeholder:text-muted-foreground",
-                  "leading-6"
-                )}
-                aria-label="Write your message"
-                disabled={disabled || isSending}
-              />
-            </div>
+              rows={1}
+              disabled={disabled || isSending}
+              aria-label="Write your message"
+            />
           </div>
 
           <Button
             type="button"
             onClick={doSend}
             disabled={disabled || isSending || !value.trim()}
-            className="h-10 w-10 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            className="h-10 w-10 rounded-full p-0 flex-shrink-0"
             aria-label="Send message"
           >
             <SendHorizontal className="h-5 w-5" />
