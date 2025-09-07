@@ -14,8 +14,11 @@ interface CompanionIdPageProps {
 const CompanionIdPage = async ({ params }: CompanionIdPageProps) => {
   const { companionId } = await params;
 
-  // Server component: prefer auth(); fall back to currentUser() in dev if needed
-  let { userId } = auth();
+  // Clerk auth() is async in Next 15 — await it
+  const { userId: authUserId } = await auth();
+
+  // Fall back to currentUser() if auth() is empty (e.g., dev edge cases)
+  let userId = authUserId;
   if (!userId) {
     const user = await currentUser();
     userId = user?.id ?? null;
@@ -29,11 +32,11 @@ const CompanionIdPage = async ({ params }: CompanionIdPageProps) => {
   const companion =
     companionId !== "new"
       ? await prismadb.companion.findUnique({
-          where: { id: companionId }, // unique selector
+          where: { id: companionId },
         })
       : null;
 
-  // If editing, ensure record exists and is owned by the current user
+  // If editing, ensure record exists and user owns it
   if (companionId !== "new") {
     if (!companion) {
       redirect("/");

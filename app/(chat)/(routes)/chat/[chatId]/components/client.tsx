@@ -7,7 +7,7 @@ import { Companion, Message } from "@prisma/client";
 import { ChatHeader } from "../../../../../../components/chat-header";
 import { ChatMessages } from "../../../../../../components/chat-messages";
 import { ChatForm } from "../../../../../../components/chat-form";
-import type { ChatMessageProps } from "./chat-message";
+import type { ChatMessageProps } from "../../../../../../components/chat-message";
 
 interface ChatClientProps {
   companion: Companion & {

@@ -1,20 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/chat/[chatId]/route.ts
-import dotenv from "dotenv";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 
 import { generateText } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { createOpenAI } from "@ai-sdk/openai";
 
 import { MemoryManager } from "@/lib/memory";
 import { rateLimit } from "@/lib/rate-limit";
 import prismadb from "@/lib/prismadb";
 
-dotenv.config({ path: `.env` });
+// Use the AI SDK client (do NOT pass a second arg to openai())
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY ?? "",
+});
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   context: { params: Promise<{ chatId: string }> }
 ) {
   try {
@@ -26,6 +28,7 @@ export async function POST(
       return new NextResponse("Unauthorized!", { status: 401 });
     }
 
+    // basic rate limit
     const identifier = request.url + "-" + user.id;
     const { success } = await rateLimit(identifier);
     if (!success) return new NextResponse("Ratelimit Exceeded!", { status: 429 });
@@ -76,7 +79,7 @@ export async function POST(
         ? similarDocs.map((d: any) => d.pageContent).join("\n")
         : "";
 
-    // system prompt (all context here; user message is just the latest prompt)
+    // system prompt
     const systemPrompt = `
 You are ${displayName}, a supportive companion. Be warm, curious, concise, and emotionally intelligent.
 Ask short, open questions; avoid long monologues. Maintain healthy boundaries and decline unsafe content kindly.
@@ -92,14 +95,14 @@ Recent chat transcript (use for context; do not echo verbatim):
 ${recentChatHistory || "—"}
 `.trim();
 
-    // ---- NON-STREAMED GENERATION (simple + reliable with useCompletion) ----
+    // ---- NON-STREAMED GENERATION ----
     const { text } = await generateText({
-      model: openai("gpt-4o-mini", { apiKey: process.env.OPENAI_API_KEY }),
+      model: openai("gpt-4o-mini"),  // <-- fixed: only 1 arg; client carries the key
       system: systemPrompt,
-      prompt,                    // latest user message only
+      prompt,                        // latest user message only
       temperature: 0.8,
       topP: 0.9,
-      maxTokens: 500,
+      maxOutputTokens: 500,          // <-- fixed option name
     });
 
     const response = (text ?? "").trim() || "I’m here—tell me more?";
@@ -115,7 +118,7 @@ ${recentChatHistory || "—"}
       },
     });
 
-    // return plain text (this is exactly what useCompletion expects)
+    // return plain text (what your client expects)
     return new Response(response, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });

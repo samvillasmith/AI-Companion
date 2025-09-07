@@ -1,6 +1,6 @@
 // app/api/stripe/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth, clerkClient } from "@clerk/nextjs/server";
+import { getAuth, clerkClient, currentUser } from "@clerk/nextjs/server";
 
 import prismadb from "@/lib/prismadb";
 import { stripe } from "@/lib/stripe";
@@ -35,13 +35,24 @@ export async function GET(req: NextRequest) {
     // Optional email for Checkout
     let email: string | undefined;
     try {
-      const user = await clerkClient.users.getUser(userId);
+      // clerkClient is an async factory in your setup
+      const clerk = await clerkClient();
+      const user = await clerk.users.getUser(userId);
       email =
         user.primaryEmailAddress?.emailAddress ??
         user.emailAddresses[0]?.emailAddress ??
         undefined;
+
+      // Fallback if needed (paranoia only)
+      if (!email) {
+        const cu = await currentUser();
+        email =
+          cu?.primaryEmailAddress?.emailAddress ??
+          cu?.emailAddresses?.[0]?.emailAddress ??
+          undefined;
+      }
     } catch {
-      // proceed without email; Stripe will collect
+      // proceed without email; Stripe will collect it
     }
 
     const lineItem = process.env.STRIPE_PRICE_ID
