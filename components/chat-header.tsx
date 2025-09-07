@@ -15,6 +15,9 @@ interface ChatHeaderProps {
   companion: Companion & { messages: Message[]; _count: { messages: number } };
 }
 
+/**
+ * Sticky header on the PAGE; larger bottom margin so messages clear it on mobile.
+ */
 export const ChatHeader = ({ companion }: ChatHeaderProps) => {
   const router = useRouter();
   const { user } = useUser();
@@ -31,49 +34,50 @@ export const ChatHeader = ({ companion }: ChatHeaderProps) => {
   };
 
   return (
-    <div className="flex w-full justify-between items-center border-b border-border pb-4">
-      <div className="flex gap-x-2 items-center">
-        <Button size="icon" variant="ghost">
-          <Link href="/" aria-label="Back to home">
-            <ChevronLeft className="h-8 w-8" onClick={() => router.push(`/`)} />
-          </Link>
-        </Button>
+    <div className="sticky top-16 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b border-border pb-3 mb-4 sm:mb-5">
+      <div className="flex w-full justify-between items-center">
+        <div className="flex gap-x-2 items-center">
+          <Button size="icon" variant="ghost">
+            <Link href="/" aria-label="Back to home">
+              <ChevronLeft className="h-8 w-8" onClick={() => router.push(`/`)} />
+            </Link>
+          </Button>
 
-        <BotAvatar src={companion.src} />
+          <BotAvatar src={companion.src} />
 
-        <div className="flex flex-col gap-y-1">
-          <div className="flex items-center gap-x-2">
-            {/* tiny accent only in dark mode */}
-            <div className="h-2 w-2 rounded-full bg-indigo-500/60 dark:bg-gradient-to-r dark:from-sky-400 dark:via-indigo-500 dark:to-fuchsia-500" />
-            <p className="font-bold text-foreground">{companion.name}</p>
-            <div className="flex items-center text-xs text-muted-foreground">
-              <MessagesSquare className="w-3 h-3 mr-1" />
-              {companion._count.messages}
+          <div className="flex flex-col gap-y-1">
+            <div className="flex items-center gap-x-2">
+              <div className="h-2 w-2 rounded-full bg-indigo-500/60 dark:bg-gradient-to-r dark:from-sky-400 dark:via-indigo-500 dark:to-fuchsia-500" />
+              <p className="font-bold text-foreground">{companion.name}</p>
+              <div className="flex items-center text-xs text-muted-foreground">
+                <MessagesSquare className="w-3 h-3 mr-1" />
+                {companion._count.messages}
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground">Created by {companion.userName}</p>
           </div>
-          <p className="text-xs text-muted-foreground">Created by {companion.userName}</p>
         </div>
-      </div>
 
-      {user?.id === companion.userId && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="bg-muted hover:bg-muted/80">
-              <MoreVertical />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-background text-foreground border border-border">
-            <DropdownMenuItem onClick={() => router.push(`/companion/${companion.id}`)}>
-              <Edit className="w-4 h-4 mr-2" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onDelete}>
-              <Trash className="w-4 h-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+        {user?.id === companion.userId && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="bg-muted hover:bg-muted/80">
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-background text-foreground border border-border">
+              <DropdownMenuItem onClick={() => router.push(`/companion/${companion.id}`)}>
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDelete}>
+                <Trash className="w-4 h-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
     </div>
   );
 };
