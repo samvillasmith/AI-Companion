@@ -28,21 +28,21 @@ export const Companions = ({ data }: CompanionProps) => {
     <div className="min-w-0 overflow-visible">
       <div className="grid [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))] gap-5 pb-10 min-w-0">
         {data.map((item) => (
-          <Card
+          <Link
             key={item.id}
-            className="
-              group rounded-2xl overflow-hidden
-              bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-50
-              border border-zinc-200 dark:border-zinc-800
-              transition hover:border-zinc-300 dark:hover:border-zinc-700
-              focus-within:ring-2 focus-within:ring-zinc-900/10 dark:focus-within:ring-white/20
-            "
+            href={`/chat/${item.id}`}
+            className="group block focus:outline-none"
+            aria-label={`Open chat with ${item.name}`}
+            prefetch={false}
           >
-            <Link
-              href={`/chat/${item.id}`}
-              aria-label={`Open chat with ${item.name}`}
-              prefetch={false}
-              className="block"
+            <Card
+              className="
+                rounded-2xl overflow-hidden transition
+                bg-white text-black dark:bg-black dark:text-white
+                border border-black/10 dark:border-white/10
+                hover:border-black/20 dark:hover:border-white/20
+                focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/30
+              "
             >
               {/* hero image */}
               <div className="relative w-full aspect-[4/3]">
@@ -50,6 +50,7 @@ export const Companions = ({ data }: CompanionProps) => {
                   src={item.src}
                   alt={`${item.name} avatar`}
                   fill
+                  priority={false}
                   className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                   sizes="(min-width:1280px) 360px, (min-width:1024px) 33vw, (min-width:640px) 45vw, 100vw"
                 />
@@ -58,23 +59,21 @@ export const Companions = ({ data }: CompanionProps) => {
               {/* Title + description */}
               <CardHeader className="px-5 py-4 text-center">
                 <p className="text-lg font-semibold leading-none">{item.name}</p>
-                <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300 line-clamp-2">
+                <p className="mt-2 text-xs text-black/70 dark:text-white/70 line-clamp-2">
                   {item.description}
                 </p>
               </CardHeader>
 
               {/* Meta */}
-              <CardFooter className="px-5 pb-4 pt-3 flex items-center justify-between text-xs border-t border-zinc-100 dark:border-white/10">
-                <p className="lowercase text-zinc-600 dark:text-zinc-400">
-                  @{item.userName}
-                </p>
-                <div className="flex items-center text-zinc-600 dark:text-zinc-400">
+              <CardFooter className="px-5 pb-4 pt-3 flex items-center justify-between text-xs text-black/70 dark:text-white/70 border-t border-black/5 dark:border-white/5">
+                <p className="lowercase">@{item.userName}</p>
+                <div className="flex items-center">
                   <MessagesSquare className="w-3 h-3 mr-1" />
                   {item._count.messages}
                 </div>
               </CardFooter>
-            </Link>
-          </Card>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>
