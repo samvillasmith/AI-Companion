@@ -16,7 +16,7 @@ interface ChatHeaderProps {
 }
 
 /**
- * Sticky header on the PAGE; larger bottom margin so messages clear it on mobile.
+ * Sticky header on PAGE; bigger bottom margin so content clears it on phones.
  */
 export const ChatHeader = ({ companion }: ChatHeaderProps) => {
   const router = useRouter();
@@ -34,7 +34,10 @@ export const ChatHeader = ({ companion }: ChatHeaderProps) => {
   };
 
   return (
-    <div className="sticky top-16 z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b border-border pb-3 mb-4 sm:mb-5">
+    <div
+      className="sticky z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b border-border pb-3 mb-4 sm:mb-5"
+      style={{ top: "calc(env(safe-area-inset-top) + 64px)" }} // align with your Navbar height
+    >
       <div className="flex w-full justify-between items-center">
         <div className="flex gap-x-2 items-center">
           <Button size="icon" variant="ghost">

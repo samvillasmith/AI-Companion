@@ -13,8 +13,9 @@ interface ChatMessagesProps {
 /**
  * Mobile layout:
  *  - Page is the only scroll container.
- *  - Extra TOP padding + an explicit spacer clear the sticky header.
- *  - Extra BOTTOM padding clears the sticky composer.
+ *  - Extra TOP padding + spacer clears sticky header.
+ *  - Extra BOTTOM padding clears sticky composer (and keyboard via --kb).
+ *  - Sets CSS var --kb using visualViewport so composer can dodge the keyboard.
  */
 export const ChatMessages = ({ messages = [], isLoading, companion }: ChatMessagesProps) => {
   const scrollRef = useRef<ElementRef<"div">>(null);
@@ -29,20 +30,39 @@ export const ChatMessages = ({ messages = [], isLoading, companion }: ChatMessag
     scrollRef?.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
+  // ---- keyboard-aware inset for iOS Safari
+  useEffect(() => {
+    const el = window.visualViewport;
+    if (!el) return;
+    const update = () => {
+      const inset = Math.max(0, (window.innerHeight || 0) - el.height);
+      document.documentElement.style.setProperty("--kb", `${inset}px`);
+    };
+    update();
+    el.addEventListener("resize", update);
+    el.addEventListener("scroll", update);
+    return () => {
+      el.removeEventListener("resize", update);
+      el.removeEventListener("scroll", update);
+    };
+  }, []);
+
   return (
     <div
       className={[
         "flex-1 min-h-0 pr-4",
-        // ↑↑ give the list room under the sticky header
-        "pt-8 sm:pt-6",
-        // ↑↑ keep the last message above the composer
-        "pb-[calc(env(safe-area-inset-bottom)+104px)] sm:pb-[calc(env(safe-area-inset-bottom)+112px)]",
+        // 👇 more clearance so first bubble never sits under header on phones
+        "pt-12 sm:pt-6",
+        // 👇 keep the last message clear of the composer + safe-area + keyboard
+        "pb-[calc(env(safe-area-inset-bottom)+var(--kb,0px)+120px)] sm:pb-[calc(env(safe-area-inset-bottom)+96px)]",
         // single scroll area on mobile; allow inner scroll on md+
         "overflow-visible md:overflow-y-auto",
       ].join(" ")}
+      // when you programmatically scroll, don't let anchors tuck under header
+      style={{ scrollPaddingTop: "88px" }} // ~ header height on mobile
     >
-      {/* extra safety spacer so the very first bubble never tucks under header */}
-      <div className="h-3 sm:h-2" />
+      {/* safety spacer below sticky header */}
+      <div className="h-1.5 sm:h-1" />
 
       {/* Initial greeting */}
       <ChatMessage
@@ -65,8 +85,8 @@ export const ChatMessages = ({ messages = [], isLoading, companion }: ChatMessag
       {/* Typing bubble while waiting for server */}
       {isLoading && <ChatMessage role="system" src={companion.src} isLoading />}
 
-      {/* Anchor for auto-scroll; margin prevents it from sliding under the composer */}
-      <div ref={scrollRef} className="h-1" style={{ scrollMarginBottom: "8rem" }} />
+      {/* Anchor for auto-scroll; margin prevents tucking under the composer */}
+      <div ref={scrollRef} className="h-1" style={{ scrollMarginBottom: "9rem" }} />
     </div>
   );
 };

@@ -18,6 +18,19 @@
 /* base heights */
 html, body, :root { height: 100%; }
 
+:root { --kb: 0px; }
+/* For Safari 16.4+ this will auto-use the native keyboard inset if available */
+@supports (bottom: env(keyboard-inset-height)) {
+  .kb-bottom {
+    bottom: calc(env(safe-area-inset-bottom) + env(keyboard-inset-height));
+  }
+}
+/* Fallback to our JS-updated --kb var */
+.kb-bottom {
+  bottom: calc(env(safe-area-inset-bottom) + var(--kb, 0px));
+}
+
+
 /* shadcn custom variant */
 @custom-variant dark (&:is(.dark *));
 
