@@ -5,7 +5,12 @@ import { ChevronLeft, MessagesSquare, MoreVertical, Edit, Trash } from "lucide-r
 import { BotAvatar } from "./bot-avatar";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "./ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "./ui/dropdown-menu";
 import { toast } from "sonner";
 import axios from "axios";
 import Link from "next/link";
@@ -16,7 +21,8 @@ interface ChatHeaderProps {
 }
 
 /**
- * Sticky header on PAGE; bigger bottom margin so content clears it on phones.
+ * Sticky header. We tag it with data-chat-header so ChatMessages can measure its height.
+ * top offset matches your fixed Navbar (64px = pt-16) + safe-area inset.
  */
 export const ChatHeader = ({ companion }: ChatHeaderProps) => {
   const router = useRouter();
@@ -35,8 +41,9 @@ export const ChatHeader = ({ companion }: ChatHeaderProps) => {
 
   return (
     <div
-      className="sticky z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b border-border pb-3 mb-4 sm:mb-5"
-      style={{ top: "calc(env(safe-area-inset-top) + 64px)" }} // align with your Navbar height
+      data-chat-header
+      className="-mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b border-border pb-3 z-20"
+      style={{ position: "sticky", top: "calc(env(safe-area-inset-top) + 64px)" }}
     >
       <div className="flex w-full justify-between items-center">
         <div className="flex gap-x-2 items-center">
@@ -68,7 +75,10 @@ export const ChatHeader = ({ companion }: ChatHeaderProps) => {
                 <MoreVertical />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-background text-foreground border border-border">
+            <DropdownMenuContent
+              align="end"
+              className="bg-background text-foreground border border-border"
+            >
               <DropdownMenuItem onClick={() => router.push(`/companion/${companion.id}`)}>
                 <Edit className="w-4 h-4 mr-2" />
                 Edit
@@ -84,3 +94,5 @@ export const ChatHeader = ({ companion }: ChatHeaderProps) => {
     </div>
   );
 };
+
+export default ChatHeader;
