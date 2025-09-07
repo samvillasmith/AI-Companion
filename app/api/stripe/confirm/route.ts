@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/stripe/confirm/route.ts
 import { NextResponse } from "next/server";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Stripe from "stripe";
 
 import { stripe } from "@/lib/stripe";

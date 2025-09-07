@@ -1,7 +1,6 @@
 "use client";
 
 import { toast } from "sonner";
-import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { BotAvatar } from "./bot-avatar";
 import { UserAvatar } from "./user-avatar";
@@ -13,17 +12,11 @@ export interface ChatMessageProps {
   role: "system" | "assistant" | "user";
   content?: string;
   isLoading?: boolean;
-  src?: string; 
+  src?: string;
 }
 
-
-export const ChatMessage = ({
-  role,
-  content,
-  isLoading,
-  src,
-}: ChatMessageProps) => {
-  const { theme } = useTheme();
+export const ChatMessage = ({ role, content, isLoading, src }: ChatMessageProps) => {
+  const isUser = role === "user";
 
   const onCopy = () => {
     if (!content) return;
@@ -31,23 +24,28 @@ export const ChatMessage = ({
     toast("Message Copied");
   };
 
-  const isUser = role === "user";
-
   return (
     <div className={cn("group flex items-start gap-x-3 py-4 w-full", isUser && "justify-end")}>
       {!isUser && src && <BotAvatar src={src} />}
-      <div className="rounded-md px-4 py-2 max-w-sm text-sm bg-primary/10">
-        {isLoading ? (
-          <BeatLoader color={theme === "light" ? "black" : "white"} size={5} />
-        ) : (
-          content
+
+      <div
+        className={cn(
+          "rounded-lg px-4 py-2 max-w-[75%] text-sm shadow-sm border",
+          // Light mode: high-contrast neutrals; Dark mode: soft glass
+          isUser
+            ? "bg-accent text-foreground border-border dark:bg-white/10 dark:text-foreground dark:border-white/10"
+            : "bg-muted text-foreground border-border dark:bg-white/5 dark:text-foreground dark:border-white/10"
         )}
+      >
+        {isLoading ? <BeatLoader color="currentColor" size={5} /> : content}
       </div>
+
       {isUser && <UserAvatar />}
+
       {!isUser && !isLoading && (
         <Button
           onClick={onCopy}
-          className="opacity-0 group-hover:opacity-100 transition"
+          className="opacity-0 group-hover:opacity-100 transition text-muted-foreground hover:text-foreground"
           size="icon"
           variant="ghost"
         >
