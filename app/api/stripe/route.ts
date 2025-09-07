@@ -22,7 +22,7 @@ export async function GET() {
     if (userSubscription && userSubscription.stripeCustomerId) {
       const stripeSession = await stripe.billingPortal.sessions.create({
         customer: userSubscription.stripeCustomerId,
-        return_url: absoluteUrl("/api/stripe/portal-return"),
+        return_url: absoluteUrl("/settings"), // Direct to settings page
       });
 
       return NextResponse.json({ url: stripeSession.url });

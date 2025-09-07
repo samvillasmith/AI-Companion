@@ -23,13 +23,8 @@ export const Sidebar = ({ isPremium }: SidebarPremium) => {
     if (premium && !isPremium) {
       return premiumModal.onOpen();
     }
-    // Force hard navigation for Home and Settings to prevent layout issues
-    if (url === "/" || url === "/settings") {
-      window.location.href = url;
-    } else {
-      // Use regular navigation for other routes
-      window.location.href = url;
-    }
+    // Use consistent navigation for all routes
+    window.location.href = url;
   };
 
   return (
