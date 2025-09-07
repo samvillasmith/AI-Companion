@@ -1,12 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import {
-  ClerkProvider
-} from '@clerk/nextjs'
+import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from "../components/ui/sonner";
 import { PremiumModal } from "../components/premium-modal";
-
 import { cn } from "../lib/utils";
 import { ThemeProvider } from "../components/theme-provider";
 
@@ -25,6 +22,12 @@ export const metadata: Metadata = {
   description: "Custom AI Companions",
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,17 +35,26 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${cn("bg-secondary", geistSans.variable)} ${geistMono.variable} antialiased`}
-      >
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <PremiumModal />
-        {children}
-          <Toaster />
-        </ThemeProvider>
-      </body>
-    </html>
+      <html lang="en" suppressHydrationWarning>
+        <body
+          className={cn(
+            "bg-background antialiased",
+            geistSans.variable,
+            geistMono.variable
+          )}
+        >
+          <ThemeProvider 
+            attribute="class" 
+            defaultTheme="system" 
+            enableSystem
+            disableTransitionOnChange
+          >
+            <PremiumModal />
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </body>
+      </html>
     </ClerkProvider>
   );
 }

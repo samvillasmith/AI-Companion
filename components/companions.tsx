@@ -25,55 +25,54 @@ export const Companions = ({ data }: CompanionProps) => {
   }
 
   return (
-    <div className="min-w-0 overflow-visible">
-      <div className="grid [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))] gap-5 pb-10 min-w-0">
+    <div className="w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
         {data.map((item) => (
-          <Link
+          <Card
             key={item.id}
-            href={`/chat/${item.id}`}
-            className="group block focus:outline-none"
-            aria-label={`Open chat with ${item.name}`}
-            prefetch={false}
+            className="
+              group rounded-xl overflow-hidden
+              bg-card hover:shadow-lg
+              transition-all duration-300
+              border
+            "
           >
-            <Card
-              className="
-                rounded-2xl overflow-hidden transition
-                bg-white text-black dark:bg-black dark:text-white
-                border border-black/10 dark:border-white/10
-                hover:border-black/20 dark:hover:border-white/20
-                focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/30
-              "
+            <Link
+              href={`/chat/${item.id}`}
+              aria-label={`Open chat with ${item.name}`}
+              className="block"
             >
-              {/* hero image */}
+              {/* Hero image */}
               <div className="relative w-full aspect-[4/3]">
                 <Image
                   src={item.src}
                   alt={`${item.name} avatar`}
                   fill
-                  priority={false}
-                  className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                  sizes="(min-width:1280px) 360px, (min-width:1024px) 33vw, (min-width:640px) 45vw, 100vw"
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                 />
               </div>
 
               {/* Title + description */}
-              <CardHeader className="px-5 py-4 text-center">
-                <p className="text-lg font-semibold leading-none">{item.name}</p>
-                <p className="mt-2 text-xs text-black/70 dark:text-white/70 line-clamp-2">
+              <CardHeader className="p-4 text-center">
+                <p className="text-lg font-semibold">{item.name}</p>
+                <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
                   {item.description}
                 </p>
               </CardHeader>
 
               {/* Meta */}
-              <CardFooter className="px-5 pb-4 pt-3 flex items-center justify-between text-xs text-black/70 dark:text-white/70 border-t border-black/5 dark:border-white/5">
-                <p className="lowercase">@{item.userName}</p>
-                <div className="flex items-center">
+              <CardFooter className="px-4 pb-4 pt-0 flex items-center justify-between text-xs">
+                <p className="lowercase text-muted-foreground">
+                  @{item.userName}
+                </p>
+                <div className="flex items-center text-muted-foreground">
                   <MessagesSquare className="w-3 h-3 mr-1" />
                   {item._count.messages}
                 </div>
               </CardFooter>
-            </Card>
-          </Link>
+            </Link>
+          </Card>
         ))}
       </div>
     </div>

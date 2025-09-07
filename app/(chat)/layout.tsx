@@ -4,13 +4,13 @@ const ChatLayout = ({
   children: React.ReactNode;
 }) => {
   return (
-    <div className="relative">
-      {/* Ensure this route uses theme background */}
+    <div className="relative h-screen overflow-hidden">
+      {/* Background layer */}
       <div aria-hidden className="fixed inset-0 -z-10 bg-background" />
-      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div className="min-h-[calc(100dvh-4rem)] flex flex-col">
-          {children}
-        </div>
+      
+      {/* Full width container with proper height */}
+      <div className="h-full w-full">
+        {children}
       </div>
     </div>
   );
