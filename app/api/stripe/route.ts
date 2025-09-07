@@ -7,12 +7,9 @@ import { stripe } from "@/lib/stripe";
 import { absolute } from "@/lib/utils";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic"; // avoid caching surprises
+export const dynamic = "force-dynamic";
 
-// We'll route success through our confirm endpoint so DB is written even without webhooks
 const successConfirmUrl = absolute("/api/stripe/confirm?session_id={CHECKOUT_SESSION_ID}");
-// Use a real page that exists in your app ("/" if /settings 404s)
-const cancelUrl = absolute("/");
 
 export async function GET(req: NextRequest) {
   try {
@@ -25,17 +22,21 @@ export async function GET(req: NextRequest) {
     });
 
     if (userSubscription?.stripeCustomerId) {
+      // CRITICAL: Use a return URL that forces a hard reload
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.url.split('/api')[0];
+      const returnUrl = `${baseUrl}/api/stripe/portal-return`;
+      
       const portal = await stripe.billingPortal.sessions.create({
         customer: userSubscription.stripeCustomerId,
-        return_url: cancelUrl,
+        return_url: returnUrl,
       });
+      
       return NextResponse.json({ url: portal.url });
     }
 
     // Optional email for Checkout
     let email: string | undefined;
     try {
-      // clerkClient is an async factory in your setup
       const clerk = await clerkClient();
       const user = await clerk.users.getUser(userId);
       email =
@@ -43,7 +44,6 @@ export async function GET(req: NextRequest) {
         user.emailAddresses[0]?.emailAddress ??
         undefined;
 
-      // Fallback if needed (paranoia only)
       if (!email) {
         const cu = await currentUser();
         email =
@@ -72,12 +72,11 @@ export async function GET(req: NextRequest) {
 
     const checkout = await stripe.checkout.sessions.create({
       mode: "subscription",
-      success_url: successConfirmUrl, // <-- our confirm endpoint
-      cancel_url: cancelUrl,
+      success_url: successConfirmUrl,
+      cancel_url: absolute("/"),
       billing_address_collection: "auto",
       customer_email: email,
       line_items: [lineItem],
-      // make sure both the session and resulting subscription carry userId
       subscription_data: {
         metadata: { userId },
       },

@@ -4,7 +4,8 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/sign-in(.*)',
   '/api/webhook',
-  '/api/stripe/confirm',  // Add this line
+  '/api/stripe/confirm',
+  '/api/stripe/portal-return',  
   '/public' 
 ])
 
