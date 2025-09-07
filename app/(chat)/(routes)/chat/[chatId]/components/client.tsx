@@ -56,7 +56,7 @@ export const ChatClient = ({ companion }: ChatClientProps) => {
         ...cur,
         {
           role: "system", 
-          content: reply || "I'm here—tell me more?",
+          content: reply || "I’m here—tell me more?",
         },
       ]);
     } catch (err) {
@@ -72,34 +72,19 @@ export const ChatClient = ({ companion }: ChatClientProps) => {
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-6xl mx-auto w-full">
-      {/* Header - fixed height */}
-      <div className="flex-shrink-0 border-b">
-        <ChatHeader companion={companion} />
-      </div>
-      
-      {/* Messages - flexible height with scroll */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4">
-          <ChatMessages
-            companion={companion}
-            isLoading={isLoading}
-            messages={messages}
-          />
-        </div>
-      </div>
-      
-      {/* Input form - fixed at bottom */}
-      <div className="flex-shrink-0 border-t bg-background">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <ChatForm
-            isLoading={isLoading}
-            input={input}
-            handleInputChange={handleInputChange}
-            onSubmit={onSubmit}
-          />
-        </div>
-      </div>
+    <div className="flex flex-col h-full p-4 space-y-2">
+      <ChatHeader companion={companion} />
+      <ChatMessages
+        companion={companion}
+        isLoading={isLoading}
+        messages={messages}
+      />
+      <ChatForm
+        isLoading={isLoading}
+        input={input}
+        handleInputChange={handleInputChange}
+        onSubmit={onSubmit}
+      />
     </div>
   );
 };
