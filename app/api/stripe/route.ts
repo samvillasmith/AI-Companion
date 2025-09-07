@@ -22,9 +22,9 @@ export async function GET(req: NextRequest) {
     });
 
     if (userSubscription?.stripeCustomerId) {
-      // CRITICAL: Use a return URL that forces a hard reload
+      // FIXED: Direct return to /settings instead of going through API route
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.url.split('/api')[0];
-      const returnUrl = `${baseUrl}/api/stripe/portal-return`;
+      const returnUrl = `${baseUrl}/settings`;
       
       const portal = await stripe.billingPortal.sessions.create({
         customer: userSubscription.stripeCustomerId,
