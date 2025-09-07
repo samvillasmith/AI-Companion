@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     
     // Force a hard reload to the settings page
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.url.split('/api')[0];
-    const redirectUrl = `${baseUrl}/settings?from=portal&timestamp=${Date.now()}`;
+    const redirectUrl = `${baseUrl}/settings`;
     
     // Return HTML that forces a complete page reload
     return new NextResponse(
