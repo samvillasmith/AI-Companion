@@ -2,6 +2,7 @@
 import { currentUser, auth } from "@clerk/nextjs/server";
 import prismadb from "@/lib/prismadb";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 // Only enable this in development
 const isDev = process.env.NODE_ENV === "development";
@@ -74,11 +75,11 @@ console.log({
       <div className="border border-orange-200 bg-orange-50 dark:bg-orange-950/20 rounded-lg p-4">
         <h2 className="font-semibold text-orange-800 dark:text-orange-200">Debug Actions</h2>
         <div className="mt-2 space-x-2">
-          <a href="/api/auth/signout" className="text-sm underline">Force Sign Out</a>
-          <a href="/sign-in" className="text-sm underline">Sign In Page</a>
-          <a href="/settings" className="text-sm underline">Settings</a>
+          <Link href="/sign-in" className="text-sm underline">Sign In Page</Link>
+          <Link href="/sign-in" className="text-sm underline">Sign In Page</Link>
+          <Link href="/settings" className="text-sm underline">Settings</Link>
         </div>
       </div>
-    </div>
+    </div> 
   );
 }

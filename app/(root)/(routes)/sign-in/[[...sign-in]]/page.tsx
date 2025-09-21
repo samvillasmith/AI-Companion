@@ -6,19 +6,12 @@ import { SignIn, SignedIn, SignedOut } from "@clerk/nextjs";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function Page() {
-
   const searchParams = useSearchParams();
   const requested = searchParams.get("next") || searchParams.get("redirect_url");
-  const target = requested || "/settings";
-  const after = `/first-run?next=${encodeURIComponent(target)}`;
-
+  const target = requested || "/";
 
   const cardWrapRef = useRef<HTMLDivElement | null>(null);
   const [{ top, height }, setBox] = useState({ top: 0, height: 0 });
-
-  // honor ?redirect_url=... else default to /settings
-
-  
 
   useEffect(() => {
     const update = () => {
@@ -112,19 +105,15 @@ export default function Page() {
         >
           {/* If already signed in, skip the card entirely */}
           <SignedIn>
-            <ImmediateRedirect to={after} />
+            <ImmediateRedirect to={target} />
           </SignedIn>
-
 
           {/* Signed-out view — styled SignIn, perfectly centered */}
           <SignedOut>
             <div className="w-full max-w-[420px] mx-auto">
               <SignIn
-                // Send all successful sign-ins to our loading screen,
-                // which will bounce to `target` after ~5s.
-                afterSignInUrl={after}
-                // If you also support sign-up on this screen, mirror it:
-                // afterSignUpUrl={after}
+                afterSignInUrl={target}
+                afterSignUpUrl={target}
                 appearance={{
                   elements: {
                     rootBox: "w-full flex justify-center",

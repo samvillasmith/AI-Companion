@@ -68,12 +68,6 @@ export async function POST(req: NextRequest) {
           return new NextResponse("Missing userId or subscriptionId", { status: 400 });
         }
 
-        // Verify the user exists before creating subscription
-        const existingUser = await prismadb.userSubscription.findUnique({
-          where: { userId },
-          select: { userId: true }
-        });
-
         // Get subscription details from Stripe
         const subResp = await stripe.subscriptions.retrieve(subscriptionId, {
           expand: ["items.data.price", "customer"],

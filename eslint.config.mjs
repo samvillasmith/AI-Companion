@@ -12,7 +12,7 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
-export default [
+const eslintConfig = [
   // Next.js + TS presets
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 
@@ -31,7 +31,6 @@ export default [
     ],
   },
 
-  // (Optional) TS parser options if you want type-aware rules
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
@@ -53,6 +52,5 @@ export default [
     },
   },
 ];
-
 
 export default eslintConfig;
