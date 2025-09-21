@@ -1,4 +1,4 @@
-// lib/stripe.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Stripe from "stripe";
 
 // Function to get Stripe instance with lazy initialization

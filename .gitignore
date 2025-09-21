@@ -42,6 +42,6 @@ next-env.d.ts
 
 /lib/generated/prisma
 
-# generated prisma/runtime stuff (your flood of errors)
+# generated prisma/runtime stuff (flood of errors)
 lib/generated/**
 prisma/**

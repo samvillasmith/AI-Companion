@@ -181,8 +181,6 @@ html, body, :root { height: 100%; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* Add to your global CSS file (globals.css or app.css) */
-
 /* Prevent body scrolling on mobile chat pages */
 body.chat-active {
   position: fixed;

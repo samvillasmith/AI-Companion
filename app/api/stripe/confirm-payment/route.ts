@@ -1,4 +1,4 @@
-// app/api/stripe/confirm-payment/route.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { stripe } from "@/lib/stripe";
