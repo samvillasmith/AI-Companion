@@ -7,6 +7,7 @@ import { PremiumModal } from "../components/premium-modal";
 import { cn } from "../lib/utils";
 import { ThemeProvider } from "../components/theme-provider";
 import FirstSignInGate from "@/components/first-gate";
+import { StripeReturnHandler } from "@/components/stripe-return-handler";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,6 +51,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
+            <StripeReturnHandler />
             <PremiumModal />
             <FirstSignInGate />
             {children}
