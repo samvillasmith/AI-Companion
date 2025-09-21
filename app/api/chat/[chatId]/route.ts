@@ -132,7 +132,7 @@ ${recentChatHistory || "—"}
       },
     });
 
-    // return plain text (what your client expects)
+    // return plain text (what the client expects)
     return new Response(response, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });

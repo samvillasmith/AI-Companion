@@ -42,7 +42,7 @@ export const ChatClient = ({ companion }: ChatClientProps) => {
     setIsLoading(true);
 
     try {
-      // 2) call your API directly (non-streaming plain text)
+      // call the api directly
       const res = await fetch(`/api/chat/${companion.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
