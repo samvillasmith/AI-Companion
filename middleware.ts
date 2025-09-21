@@ -1,79 +1,58 @@
 // middleware.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
+// Public routes incl. Clerk + Stripe return flows (avoid protecting handshakes)
 const isPublicRoute = createRouteMatcher([
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/webhook',
-  '/api/stripe/confirm-payment',
-])
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/first-run(.*)",
+  "/sso-callback(.*)",
+  "/.well-known(.*)",
+  "/_clerk(.*)",                  // Clerk internal endpoints
+  "/api/webhook(.*)",
+  "/api/stripe(.*)",              // includes /confirm & /confirm-payment
+  "/payment/success(.*)",
+]);
 
-// Routes that should be accessible even with unclear auth state
-const isProtectedButFlexible = createRouteMatcher([
-  '/settings',
-  '/payment/success',
-  '/',
-])
+// (Optional) allow settings during uncertain auth state (e.g., just after Stripe)
+const isSoftProtected = createRouteMatcher(["/settings(.*)"]);
 
 export default clerkMiddleware(async (auth, req: NextRequest) => {
-  const url = new URL(req.url);
-  
-  // Detect Stripe-related navigation
-  const stripeIndicators = {
-    hasSessionId: url.searchParams.has('session_id'),
-    hasUpgraded: url.searchParams.has('upgraded'),
-    hasSuccess: url.searchParams.has('success'),
-    fromStripe: req.headers.get('referer')?.includes('stripe.com') === true,
-    fromBilling: req.headers.get('referer')?.includes('billing.stripe.com') === true,
-  };
-  
-  const isStripeRelated = Object.values(stripeIndicators).some(v => v);
-  
-  // Log for debugging
-  if (isStripeRelated) {
-    console.log('[Middleware] Stripe-related request detected:', {
-      path: url.pathname,
-      ...stripeIndicators
-    });
+  // Enforce a single host in production to avoid cookie/domain flips (loops)
+  // Set NEXT_PUBLIC_CANONICAL_HOST=www.telmii.online in prod env.
+  const canonicalHost = process.env.NEXT_PUBLIC_CANONICAL_HOST;
+  const isProd = process.env.VERCEL_ENV === "production";
+  const currentHost = req.headers.get("host");
+  if (isProd && canonicalHost && currentHost && currentHost !== canonicalHost) {
+    const url = new URL(req.url);
+    url.host = canonicalHost;
+    return NextResponse.redirect(url, 308);
   }
-  
-  // For public routes, don't protect
+
+  const { userId } = await auth();
+
+  // Always let public routes through
   if (isPublicRoute(req)) {
     return NextResponse.next();
   }
-  
-  // For Stripe returns on flexible routes, try to protect but don't fail hard
-  if (isStripeRelated && isProtectedButFlexible(req)) {
-    try {
-      // Try to get the user but don't block if it fails
-      const { userId } = await auth();
-      if (!userId) {
-        console.log('[Middleware] No userId on Stripe return, allowing through anyway');
-        // Don't redirect, just let it through
-        // The page itself will handle the auth state
-        return NextResponse.next();
-      }
-    } catch (error) {
-      console.log('[Middleware] Auth error on Stripe return, allowing through:', error);
-      return NextResponse.next();
-    }
-    
+
+  // During short handshake windows Clerk can’t determine auth yet.
+  // Don’t redirect-loop: let soft-protected routes pass.
+  if (isSoftProtected(req) && userId == null) {
     return NextResponse.next();
   }
-  
-  // For all other routes, normal protection
-  if (!isPublicRoute(req)) {
-    await auth.protect();
-  }
-  
+
+  // Everything else is protected.
+  await auth.protect();
   return NextResponse.next();
 });
 
+// Match all app + API routes, excluding static assets
 export const config = {
   matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    '/(api|trpc)(.*)',
+    "/((?!_next|_vercel|.*\\..*).*)",
+    "/(api|trpc)(.*)",
   ],
-}
+};
