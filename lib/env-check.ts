@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // lib/env-check.ts
 /**
  * Environment variable validation

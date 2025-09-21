@@ -1,19 +1,20 @@
 import { checkSubscription } from "../../../../lib/subscription";
 import { SubscriptionButton } from "../../../../components/subscription-button";
 import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 const SettingsPage = async () => {
     const isPremium = await checkSubscription();
 
-    return ( 
-        <div className="h-full p-4 space-y-4 max-w-3xl mx-auto">
-            <a 
+    return (
+        <div>
+            <Link 
                 href="/"
                 className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Companions
-            </a>
+            </Link>
             
             <div className="space-y-2">
                 <h3 className="text-lg font-medium">Settings</h3>

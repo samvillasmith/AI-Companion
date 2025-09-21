@@ -2,8 +2,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-declare global {
-  // eslint-disable-next-line no-var
+declare global { 
   var __appRateLimiter: Ratelimit | undefined;
 }
 

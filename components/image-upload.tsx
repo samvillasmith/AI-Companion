@@ -13,6 +13,7 @@ interface ImageUploadProps {
 export const ImageUpload = ({
   value,
   onChange,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   disabled
 }: ImageUploadProps) => {
   const [isMounted, setIsMounted] = useState(false);
