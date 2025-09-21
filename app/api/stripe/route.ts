@@ -38,8 +38,9 @@ export async function GET() {
     }
 
     // New subscription - checkout
+    // IMPORTANT: Changed to redirect to a page route, not an API route
     const stripeSession = await stripe.checkout.sessions.create({
-      success_url: absoluteUrl("/api/stripe/confirm?session_id={CHECKOUT_SESSION_ID}"),
+      success_url: absoluteUrl("/payment/success?session_id={CHECKOUT_SESSION_ID}"),
       cancel_url: absoluteUrl("/settings"),
       payment_method_types: ["card"],
       mode: "subscription",
