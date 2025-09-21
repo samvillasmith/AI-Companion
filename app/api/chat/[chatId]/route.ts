@@ -4,16 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 
 import { generateText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-
 import { MemoryManager } from "@/lib/memory";
 import { rateLimit } from "@/lib/rate-limit";
 import prismadb from "@/lib/prismadb";
 
-// Use the AI SDK client (do NOT pass a second arg to openai())
-const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY ?? "",
-});
+import { getTextModel, getProviderOptions } from "@/lib/llm";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function POST(
   request: NextRequest,
@@ -51,25 +50,26 @@ export async function POST(
     const companionKey = {
       companionName: companion.id,
       userId: user.id,
-      modelName: "gpt-4o-mini",
+      // this string is used by your MemoryManager as a label, not to pick the LLM:
+      modelName: process.env.AI_MODEL || "gpt-4o-mini",
     };
 
     const memoryManager = await MemoryManager.getInstance();
 
-    // seed memory first time
+    // Seed memory first time
     const records = await memoryManager.readLatestHistory(companionKey);
     if (records.length === 0) {
       const seed = companion.seed ?? "You are a warm, respectful companion.";
       await memoryManager.seedChatHistory(seed, "\n\n", companionKey);
     }
 
-    // append user input to memory
+    // Append user input to memory
     await memoryManager.writeToHistory("User: " + prompt + "\n", companionKey);
 
-    // short-term memory (recent transcript)
+    // Short-term memory (recent transcript)
     const recentChatHistory = await memoryManager.readLatestHistory(companionKey);
 
-    // long-term memory (RAG)
+    // Long-term memory (RAG)
     const similarDocs = await memoryManager.vectorSearch(
       recentChatHistory,
       companion_file_name
@@ -79,7 +79,7 @@ export async function POST(
         ? similarDocs.map((d: any) => d.pageContent).join("\n")
         : "";
 
-    // system prompt — updated to sound more human and ask fewer questions
+    // System prompt — same structure you had before
     const systemPrompt = `
 You are ${displayName}, a warm, human-sounding companion. Talk like a friend, not a therapist.
 
@@ -109,19 +109,24 @@ Recent chat transcript (use for context; do not echo verbatim):
 ${recentChatHistory || "—"}
 `.trim();
 
-    // ---- NON-STREAMED GENERATION ----
+    // ---- NON-STREAMED GENERATION (preserves your RAG behavior) ----
+    const model = getTextModel();
+    const providerOptions = getProviderOptions();
+
     const { text } = await generateText({
-      model: openai("gpt-4o-mini"), // client above carries the key
+      model,
       system: systemPrompt,
-      prompt,                       // latest user message only
+      prompt, // latest user message only
       temperature: 0.8,
       topP: 0.9,
       maxOutputTokens: 500,
+      // Safe default: keep Grok's web search off unless you enable it
+      providerOptions,
     });
 
     const response = (text ?? "").trim() || "Okay.";
 
-    // persist assistant reply (DB still uses "system"; UI maps to avatar)
+    // Persist assistant reply
     await memoryManager.writeToHistory(response, companionKey);
     await prismadb.companion.update({
       where: { id: chatId },
@@ -132,7 +137,7 @@ ${recentChatHistory || "—"}
       },
     });
 
-    // return plain text (what the client expects)
+    // Return plain text (what the client expects)
     return new Response(response, {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
