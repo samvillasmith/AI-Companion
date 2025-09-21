@@ -1,28 +1,37 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+// app/api/stripe/route.ts
+import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { absoluteUrl } from "@/lib/utils";
 import prismadb from "@/lib/prismadb";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
-    const { userId } = await auth();
+    // Get the authenticated user
     const user = await currentUser();
-
-    if (!userId || !user) {
-      console.log("[STRIPE] Auth failed:", { userId, user: !!user });
+    
+    if (!user || !user.id) {
+      console.log("[STRIPE] No authenticated user");
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    // Double-check we have valid user data
+    if (!user.emailAddresses || user.emailAddresses.length === 0) {
+      console.error("[STRIPE] User has no email addresses");
+      return new NextResponse("User email required", { status: 400 });
+    }
+
     const userSubscription = await prismadb.userSubscription.findUnique({
-      where: { userId }
+      where: { userId: user.id }
     });
 
     // Existing subscription - billing portal
     if (userSubscription && userSubscription.stripeCustomerId) {
       const stripeSession = await stripe.billingPortal.sessions.create({
         customer: userSubscription.stripeCustomerId,
-        return_url: absoluteUrl("/settings"), // Direct to settings page
+        return_url: absoluteUrl("/settings"),
       });
 
       return NextResponse.json({ url: stripeSession.url });
@@ -53,11 +62,15 @@ export async function GET() {
         }
       ],
       metadata: {
-        userId,
-      }
+        userId: user.id, // Critical: Pass the authenticated user's ID
+      },
+      // Add client reference ID for additional validation
+      client_reference_id: user.id,
     });
 
+    console.log("[STRIPE] Created checkout session for user:", user.id);
     return NextResponse.json({ url: stripeSession.url });
+    
   } catch (error) {
     console.error("[STRIPE_GET] Error:", error);
     return new NextResponse("Internal Error", { status: 500 });

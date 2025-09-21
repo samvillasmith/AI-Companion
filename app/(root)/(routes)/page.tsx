@@ -4,6 +4,7 @@ import { SearchInput } from "@/components/search-input";
 import prismadb from "@/lib/prismadb";
 import { SuccessToast } from "@/components/success-toast";
 
+
 interface RootPageProps {
   searchParams: Promise<{
     categoryId?: string;
