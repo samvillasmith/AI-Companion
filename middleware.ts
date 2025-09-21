@@ -1,48 +1,79 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 // middleware.ts
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-// Only these routes are truly public (no auth needed)
 const isPublicRoute = createRouteMatcher([
-  '/sign-up(.*)',
   '/sign-in(.*)',
-  '/api/webhook', // Stripe webhooks need to be public
-  '/api/stripe/confirm-payment', // Allow this to handle its own auth
+  '/sign-up(.*)',
+  '/api/webhook',
+  '/api/stripe/confirm-payment',
 ])
 
-export default clerkMiddleware(async (auth, req) => {
-  // Don't aggressively protect routes when coming back from Stripe
+// Routes that should be accessible even with unclear auth state
+const isProtectedButFlexible = createRouteMatcher([
+  '/settings',
+  '/payment/success',
+  '/',
+])
+
+export default clerkMiddleware(async (auth, req: NextRequest) => {
   const url = new URL(req.url);
-  const isComingFromStripe = url.searchParams.has('session_id') || 
-                             url.searchParams.has('upgraded') ||
-                             req.headers.get('referer')?.includes('stripe.com');
   
-  // For public routes, skip protection
-  if (isPublicRoute(req)) {
-    return;
+  // Detect Stripe-related navigation
+  const stripeIndicators = {
+    hasSessionId: url.searchParams.has('session_id'),
+    hasUpgraded: url.searchParams.has('upgraded'),
+    hasSuccess: url.searchParams.has('success'),
+    fromStripe: req.headers.get('referer')?.includes('stripe.com') === true,
+    fromBilling: req.headers.get('referer')?.includes('billing.stripe.com') === true,
+  };
+  
+  const isStripeRelated = Object.values(stripeIndicators).some(v => v);
+  
+  // Log for debugging
+  if (isStripeRelated) {
+    console.log('[Middleware] Stripe-related request detected:', {
+      path: url.pathname,
+      ...stripeIndicators
+    });
   }
   
-  // If coming from Stripe, be lenient with auth protection
-  // This prevents the redirect loops
-  if (isComingFromStripe) {
+  // For public routes, don't protect
+  if (isPublicRoute(req)) {
+    return NextResponse.next();
+  }
+  
+  // For Stripe returns on flexible routes, try to protect but don't fail hard
+  if (isStripeRelated && isProtectedButFlexible(req)) {
     try {
-      await auth.protect();
+      // Try to get the user but don't block if it fails
+      const { userId } = await auth();
+      if (!userId) {
+        console.log('[Middleware] No userId on Stripe return, allowing through anyway');
+        // Don't redirect, just let it through
+        // The page itself will handle the auth state
+        return NextResponse.next();
+      }
     } catch (error) {
-      // Silently continue - let the page handle auth state
-      console.log('[Middleware] Allowing Stripe return through despite auth issue');
-      return;
+      console.log('[Middleware] Auth error on Stripe return, allowing through:', error);
+      return NextResponse.next();
     }
-  } else {
-    // Normal protection for other routes
+    
+    return NextResponse.next();
+  }
+  
+  // For all other routes, normal protection
+  if (!isPublicRoute(req)) {
     await auth.protect();
   }
-})
+  
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
     '/(api|trpc)(.*)',
   ],
 }
