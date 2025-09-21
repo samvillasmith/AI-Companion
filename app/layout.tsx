@@ -1,13 +1,12 @@
-// app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs'
 import { Toaster } from "../components/ui/sonner";
 import { PremiumModal } from "../components/premium-modal";
-import { SessionGuardian } from "../components/session-guardian";
 import { cn } from "../lib/utils";
 import { ThemeProvider } from "../components/theme-provider";
+import FirstSignInGate from "@/components/first-gate";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,13 +35,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider
-      appearance={{
-        variables: {
-          colorPrimary: '#6366f1', // Indigo to match your theme
-        }
-      }}
-    >
+    <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body
           className={cn(
@@ -57,8 +50,8 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <SessionGuardian />
             <PremiumModal />
+            <FirstSignInGate />
             {children}
             <Toaster />
           </ThemeProvider>
