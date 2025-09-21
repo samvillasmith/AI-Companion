@@ -4,6 +4,7 @@ import prismadb from "@/lib/prismadb";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
 // Only enable this in development
 const isDev = process.env.NODE_ENV === "development";
 

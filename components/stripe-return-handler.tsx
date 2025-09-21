@@ -1,11 +1,11 @@
 // components/stripe-return-handler.tsx
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 
-export function StripeReturnHandler() {
+function StripeReturnHandlerInner() {
   const { isLoaded, isSignedIn } = useAuth();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -82,4 +82,12 @@ export function StripeReturnHandler() {
   }, [isLoaded, isSignedIn, pathname, searchParams, router]);
 
   return null; // This component doesn't render anything
+}
+
+export function StripeReturnHandler() {
+  return (
+    <Suspense fallback={null}>
+      <StripeReturnHandlerInner />
+    </Suspense>
+  );
 }
