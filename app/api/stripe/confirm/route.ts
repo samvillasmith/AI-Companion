@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// app/api/stripe/confirm/route.ts
 import type Stripe from "stripe";
 import { NextRequest, NextResponse } from "next/server";
+import { currentUser } from "@clerk/nextjs/server";
 
 import { stripe } from "@/lib/stripe";
 import prismadb from "@/lib/prismadb";
@@ -41,6 +43,16 @@ async function upsertUserSub(args: {
 
 export async function GET(req: NextRequest) {
   try {
+    // CRITICAL: Verify the current user is authenticated FIRST
+    const user = await currentUser();
+    if (!user) {
+      console.error("[CONFIRM] No authenticated user found");
+      // Redirect to sign-in with the intended destination
+      const signInUrl = new URL('/sign-in', req.url);
+      signInUrl.searchParams.set('redirect_url', '/settings');
+      return NextResponse.redirect(signInUrl);
+    }
+
     const url = new URL(req.url);
     const sessionId = url.searchParams.get("session_id");
     if (!sessionId) {
@@ -65,15 +77,24 @@ export async function GET(req: NextRequest) {
       return new NextResponse("Session not paid/complete", { status: 400 });
     }
 
-    const userId = session.metadata?.userId as string | undefined;
+    const sessionUserId = session.metadata?.userId as string | undefined;
     const subscriptionId = session.subscription as string | undefined;
 
-    if (!userId || !subscriptionId) {
+    if (!sessionUserId || !subscriptionId) {
       console.warn("[CONFIRM] Missing userId or subscriptionId", {
-        userId,
+        sessionUserId,
         subscriptionId,
       });
       return new NextResponse("Missing metadata or subscription", { status: 400 });
+    }
+
+    // SECURITY CHECK: Ensure the session userId matches the authenticated user
+    if (sessionUserId !== user.id) {
+      console.error("[CONFIRM] User ID mismatch!", {
+        sessionUserId,
+        authenticatedUserId: user.id,
+      });
+      return new NextResponse("Unauthorized - session mismatch", { status: 403 });
     }
 
     // Pull subscription to get canonical values
@@ -81,7 +102,7 @@ export async function GET(req: NextRequest) {
       expand: ["items.data.price", "customer"],
     });
 
-    // Narrow types the safe way: some Stripe @types revisions omit `current_period_end`
+    // Narrow types the safe way
     type SubscriptionWithPeriod = Stripe.Subscription & {
       current_period_end?: number | null;
     };
@@ -97,51 +118,28 @@ export async function GET(req: NextRequest) {
     const periodEnd = toDate(sub.current_period_end ?? null);
 
     await upsertUserSub({
-      userId,
+      userId: user.id, // Use the authenticated user's ID
       customerId,
       subId: sub.id,
       priceId,
       periodEnd,
     });
 
-    console.log("✅ [CONFIRM] upserted subscription", { userId, subId: sub.id });
+    console.log("✅ [CONFIRM] upserted subscription", { userId: user.id, subId: sub.id });
 
-    // IMPORTANT: Use a full URL redirect with hard reload
-    // This ensures the page loads fresh without any cached states
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.url.split('/api')[0];
-    const redirectUrl = `${baseUrl}/?upgraded=true&success=true&timestamp=${Date.now()}`;
+    // Use a server-side redirect to maintain authentication
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || url.origin;
+    const successUrl = new URL('/', baseUrl);
+    successUrl.searchParams.set('upgraded', 'true');
+    successUrl.searchParams.set('success', 'true');
     
-    // Return HTML that forces a full page reload
-    return new NextResponse(
-      `<!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Payment Successful - Redirecting...</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-        </head>
-        <body>
-          <script>
-            // Force a hard reload to the success page
-            window.location.replace('${redirectUrl}');
-          </script>
-          <noscript>
-            <meta http-equiv="refresh" content="0; url=${redirectUrl}">
-          </noscript>
-        </body>
-      </html>`,
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/html',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        },
-      }
-    );
+    // Use NextResponse.redirect for proper server-side redirect
+    return NextResponse.redirect(successUrl);
+    
   } catch (err: any) {
     console.error("❌ [CONFIRM] error:", err?.message);
-    return new NextResponse(`Confirm failed: ${err.message}`, { status: 500 });
+    // On error, redirect to settings page
+    const settingsUrl = new URL('/settings', req.url);
+    return NextResponse.redirect(settingsUrl);
   }
 }
