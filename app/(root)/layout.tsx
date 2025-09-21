@@ -1,10 +1,20 @@
 import { Navbar } from "@/components/navbar";
 import { Sidebar } from "@/components/sidebar";
 import { checkSubscription } from "@/lib/subscription";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 
 const RootLayout = async ({ children }: { children: React.ReactNode }) => {
-  const { userId } = await auth();
+  // Try auth() first
+  const { userId: authUserId } = await auth();
+  
+  // If auth() returns null (which can happen during Stripe redirect back),
+  // try currentUser() as a fallback
+  let userId = authUserId;
+  if (!userId) {
+    const user = await currentUser();
+    userId = user?.id ?? null;
+  }
+  
   const isPremium = userId ? await checkSubscription() : false;
 
   // Background accents (light + dark)
@@ -29,7 +39,7 @@ const RootLayout = async ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // 🔒 Logged-in app shell
+  // 🔒 Logged-in app shell - ALWAYS show navbar and sidebar if userId exists
   return (
     <div className="min-h-[100svh]">
       <Navbar isPremium={isPremium} />
