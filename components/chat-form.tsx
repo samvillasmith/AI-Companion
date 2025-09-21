@@ -22,27 +22,30 @@ export const ChatForm = ({
   isLoading,
 }: ChatFormProps) => {
   return (
-    <form
-      onSubmit={onSubmit}
-      className="border-t border-border py-4 flex items-center gap-x-2"
-    >
-      <div className="relative flex-1 rounded-xl bg-muted ring-1 ring-border focus-within:ring-2 focus-within:ring-indigo-400/40">
-        <Input
-          disabled={isLoading}
-          value={input}
-          onChange={handleInputChange}
-          placeholder="Write your message..."
-          className="h-12 rounded-xl border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
-        />
-      </div>
-      <Button
-        disabled={isLoading}
-        variant="ghost"
-        className="text-foreground hover:bg-muted"
-        type="submit"
+    <div className="border-t border-border bg-background/95 backdrop-blur-sm">
+      <form
+        onSubmit={onSubmit}
+        className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-x-2"
       >
-        <SendHorizontal className="h-6 w-6" />
-      </Button>
-    </form>
+        <div className="relative flex-1 rounded-full bg-muted/50 ring-1 ring-border/50 focus-within:ring-2 focus-within:ring-indigo-400/40 transition-all">
+          <Input
+            disabled={isLoading}
+            value={input}
+            onChange={handleInputChange}
+            placeholder="Write your message..."
+            className="h-11 rounded-full border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus-visible:ring-0 px-5"
+          />
+        </div>
+        <Button
+          disabled={isLoading}
+          variant="default"
+          size="icon"
+          className="h-11 w-11 rounded-full bg-primary hover:bg-primary/90 transition-all"
+          type="submit"
+        >
+          <SendHorizontal className="h-5 w-5" />
+        </Button>
+      </form>
+    </div>
   );
 };
