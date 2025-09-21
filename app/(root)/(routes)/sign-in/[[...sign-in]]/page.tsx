@@ -6,19 +6,29 @@ import { SignIn, SignedIn, SignedOut } from "@clerk/nextjs";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function Page() {
+
+  const searchParams = useSearchParams();
+  const requested = searchParams.get("next") || searchParams.get("redirect_url");
+  const target = requested || "/settings";
+  const after = `/first-run?next=${encodeURIComponent(target)}`;
+
+
   const cardWrapRef = useRef<HTMLDivElement | null>(null);
   const [{ top, height }, setBox] = useState({ top: 0, height: 0 });
 
   // honor ?redirect_url=... else default to /settings
-  const searchParams = useSearchParams();
-  const target = searchParams.get("redirect_url") || "/settings";
+
+  
 
   useEffect(() => {
     const update = () => {
       const el = cardWrapRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      setBox({ top: Math.max(0, Math.round(r.top)), height: Math.round(r.height) });
+      setBox({
+        top: Math.max(0, Math.round(r.top)),
+        height: Math.round(r.height),
+      });
     };
 
     update(); // initial
@@ -85,9 +95,9 @@ export default function Page() {
         </div>
       </div>
 
-      {/* VIEWPORT — safe-area aware top padding so card never sits under navbar */}
+      {/* VIEWPORT */}
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-32 sm:pb-40 min-h-[100svh] sm:min-h-screen overflow-hidden flex flex-col">
-        {/* DESKTOP TITLE (mobile title is in navbar) */}
+        {/* DESKTOP TITLE */}
         <div className="hidden sm:block text-center pt-10">
           <h1 className="mb-2 text-5xl font-extrabold tracking-wide bg-gradient-to-r from-sky-400 via-indigo-400 to-fuchsia-400 bg-clip-text text-transparent">
             TELMII
@@ -95,27 +105,30 @@ export default function Page() {
           <p className="mb-6 text-sm text-white/75">Create & chat with custom AI companions.</p>
         </div>
 
-        {/* CENTER — add top padding equal to mobile navbar height */}
+        {/* CENTER */}
         <div
           ref={cardWrapRef}
           className="flex-1 flex items-center justify-center pt-[calc(env(safe-area-inset-top)+6rem)] sm:pt-0"
         >
           {/* If already signed in, skip the card entirely */}
           <SignedIn>
-            <ImmediateRedirect to={target} />
+            <ImmediateRedirect to={after} />
           </SignedIn>
+
 
           {/* Signed-out view — styled SignIn, perfectly centered */}
           <SignedOut>
             <div className="w-full max-w-[420px] mx-auto">
               <SignIn
-                forceRedirectUrl={target}
-                fallbackRedirectUrl={target}
+                // Send all successful sign-ins to our loading screen,
+                // which will bounce to `target` after ~5s.
+                afterSignInUrl={after}
+                // If you also support sign-up on this screen, mirror it:
+                // afterSignUpUrl={after}
                 appearance={{
                   elements: {
                     rootBox: "w-full flex justify-center",
-                    card:
-                      "w-full max-w-[420px] mx-auto shadow-none border-0 bg-transparent p-0",
+                    card: "w-full max-w-[420px] mx-auto shadow-none border-0 bg-transparent p-0",
                     headerTitle: "text-center",
                     headerSubtitle: "text-center",
                   },
@@ -126,7 +139,7 @@ export default function Page() {
         </div>
       </div>
 
-      {/* BULLETS — fixed at bottom, safe-area padding */}
+      {/* BULLETS */}
       <div className="fixed inset-x-0 bottom-10 z-20 px-4 pb-[env(safe-area-inset-bottom)]">
         <ul className="sm:hidden mx-auto max-w-6xl grid grid-cols-2 gap-x-4 gap-y-3 pb-4">
           <Bullet>Built for mobile</Bullet>
@@ -152,7 +165,7 @@ export default function Page() {
         </ul>
       </div>
 
-      {/* GLOBAL OVERRIDES: keep card centered on tiny viewports */}
+      {/* GLOBAL OVERRIDES */}
       <style>{`
         .cl-card {
           margin-left: auto !important;
