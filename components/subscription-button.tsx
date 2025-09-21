@@ -26,10 +26,14 @@ export const SubscriptionButton = ({
       // Double-check authentication state before proceeding
       if (!isSignedIn) {
         toast.error("Please sign in to continue");
-        // Optionally redirect to sign-in
+        // Redirect to sign-in
         window.location.href = "/sign-in?redirect_url=/settings";
         return;
       }
+      
+      // Store a flag that we're going to Stripe
+      sessionStorage.setItem('stripe_redirect', 'true');
+      sessionStorage.setItem('stripe_redirect_time', Date.now().toString());
       
       const response = await axios.get("/api/stripe", {
         withCredentials: true, // Ensure cookies are sent
@@ -40,11 +44,7 @@ export const SubscriptionButton = ({
       });
       
       if (response.data.url) {
-        // Store current auth state before redirect
-        sessionStorage.setItem('stripe_redirect', 'true');
-        sessionStorage.setItem('stripe_redirect_time', Date.now().toString());
-        
-        // Use standard navigation
+        // Use window.location.href for external redirects
         window.location.href = response.data.url;
       } else {
         throw new Error("No URL returned");
@@ -60,6 +60,7 @@ export const SubscriptionButton = ({
         toast.error("Something went wrong. Please try again.");
       }
       
+      // Only set loading to false if we're not redirecting
       setLoading(false);
     }
   }
