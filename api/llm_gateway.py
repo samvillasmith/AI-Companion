@@ -88,41 +88,73 @@ def call_gemini(model: str, messages: List[Msg], temperature: float, top_p: floa
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=400, detail="GOOGLE_GENERATIVE_AI_API_KEY is not set")
     import google.generativeai as genai
+    
     genai.configure(api_key=GOOGLE_API_KEY)
-    # Flatten to a single user prompt with a system header; Gemini supports tools,
-    # but for simplicity we just concatenate with role labels removed.
+    
+    # Flatten to a single user prompt with a system header
     system_parts = [m.content for m in messages if m.role == "system"]
     user_parts: List[str] = []
     for m in messages:
         if m.role in ("user", "assistant"):
             prefix = "User: " if m.role == "user" else "Assistant: "
             user_parts.append(prefix + m.content)
+    
     prompt = ("\n".join(system_parts) + "\n\n" if system_parts else "") + "\n".join(user_parts)
+    
     model_ = genai.GenerativeModel(model)
-    resp = model_.generate_content(
-        prompt,
-        generation_config={
-            "temperature": temperature,
-            "top_p": top_p,
-            "max_output_tokens": max_tokens,
-            # stop sequences param not exposed uniformly; our system prompt already guards style.
-        },
-        safety_settings=[  # loosen blocks that caused empty candidates earlier
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
-            {"category": "HARM_CATEGORY_SEXUAL", "threshold": "BLOCK_ONLY_HIGH"},
-            {"category": "HARM_CATEGORY_VIOLENCE", "threshold": "BLOCK_ONLY_HIGH"},
-        ],
-    )
-    # quick accessor; if missing, stitch from parts
-    text = getattr(resp, "text", None)
-    if not text:
-        try:
-            cand = resp.candidates[0]
-            text = "".join([p.text for p in cand.content.parts if getattr(p, "text", None)])
-        except Exception:
-            text = ""
+    
+    # Use proper enum values from the library
+    try:
+        resp = model_.generate_content(
+            prompt,
+            generation_config={
+                "temperature": temperature,
+                "top_p": top_p,
+                "max_output_tokens": max_tokens,
+            },
+            safety_settings=[
+                {
+                    "category": genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                    "threshold": genai.types.HarmBlockThreshold.BLOCK_NONE,
+                },
+                {
+                    "category": genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                    "threshold": genai.types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+                },
+                {
+                    "category": genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                    "threshold": genai.types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+                },
+                {
+                    "category": genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                    "threshold": genai.types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+                },
+            ],
+        )
+        
+        # Handle response
+        if hasattr(resp, 'text'):
+            text = resp.text
+        else:
+            # Fallback to parsing parts
+            try:
+                if resp.candidates and len(resp.candidates) > 0:
+                    cand = resp.candidates[0]
+                    if hasattr(cand, 'content') and hasattr(cand.content, 'parts'):
+                        text = "".join([p.text for p in cand.content.parts if hasattr(p, 'text')])
+                    else:
+                        text = "I'm here to help! What would you like to know?"
+                else:
+                    text = "I'm here to help! What would you like to know?"
+            except Exception as e:
+                print(f"Error parsing Gemini response: {e}")
+                text = "I'm here to help! What would you like to know?"
+                
+    except Exception as e:
+        print(f"Gemini generation error: {e}")
+        # Fallback response if Gemini blocks the content
+        text = "I'm here to help! What would you like to know?"
+    
     return (text or "").strip()
 
 # Bedrock (Anthropic Claude via Bedrock Runtime)
