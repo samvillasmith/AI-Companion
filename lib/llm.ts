@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/llm.ts
 
 export type ProviderName = "bedrock" | "openai" | "xai" | "google";

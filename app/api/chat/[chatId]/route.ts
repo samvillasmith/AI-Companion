@@ -100,9 +100,16 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
     const messages: ChatMessage[] = [];
 
     // System message with companion instructions and personality
+    // Add instructions to be concise and natural
     const systemPrompt = `You are ${companion.name}. ${companion.description}.
 
-IMPORTANT: Respond in character as ${companion.name}. ${companion.instructions}
+IMPORTANT INSTRUCTIONS:
+1. Respond in character as ${companion.name}.
+2. Keep your responses concise and conversational (2-4 sentences is ideal, maximum 1-2 short paragraphs).
+3. Be natural and engaging, but don't overwhelm with too much information.
+4. Stay focused on the current topic without going off on tangents.
+
+${companion.instructions}
 
 ${companion.seed ? `Example conversation style:\n${companion.seed}\n` : ""}
 
@@ -111,7 +118,7 @@ ${relevantHistory ? `Relevant context from past conversations:\n${relevantHistor
 Recent conversation history:
 ${recentChatHistory}
 
-Stay in character and respond naturally as ${companion.name} would.`;
+Remember: Be helpful but concise. Quality over quantity.`;
 
     messages.push({
       role: "system",
@@ -145,7 +152,7 @@ Stay in character and respond naturally as ${companion.name} would.`;
     // Normalize messages for the provider
     const finalMsgs = normalizeMessagesForProvider(provider, messages);
 
-    // Call your local gateway
+    // Call your local gateway with reduced token limit for more concise responses
     const gatewayUrl = `${gatewayBase()}/v1/chat`;
     console.log(`[CHAT_API] Calling gateway:`, gatewayUrl);
     
@@ -156,8 +163,8 @@ Stay in character and respond naturally as ${companion.name} would.`;
         provider,
         model,
         messages: finalMsgs,
-        temperature: 0.9,
-        max_output_tokens: 1024,
+        temperature: 0.7, // Reduced from 0.9 for more focused responses
+        max_output_tokens: 256, // Reduced from 1024 to keep responses concise
       }),
     });
 
@@ -175,7 +182,15 @@ Stay in character and respond naturally as ${companion.name} would.`;
     }
 
     const data = await resp.json();
-    const aiResponse = data.text || "I'm here—tell me more?";
+    let aiResponse = data.text || "I'm here—tell me more?";
+    
+    // Clean up any escape characters that might appear in the response
+    aiResponse = aiResponse
+      .replace(/\\n/g, '\n')           // Replace literal \n with actual newlines
+      .replace(/\\"/g, '"')             // Replace escaped quotes with regular quotes
+      .replace(/^["']|["']$/g, '')      // Remove leading/trailing quotes
+      .replace(/\\/g, '')               // Remove any remaining backslashes
+      .trim();
 
     // Write AI response to history
     await memoryManager.writeToHistory(
