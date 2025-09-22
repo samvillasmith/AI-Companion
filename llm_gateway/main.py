@@ -8,7 +8,7 @@
 #   openai==1.51.2  (pin avoids older httpx/proxy kwarg issues)
 #
 # Run:
-#   ./multichatvenv/Scripts/python -m uvicorn api.llm_gateway:app --host 127.0.0.1 --port 8000 --reload
+#   #   ./multichatvenv/Scripts/python -m uvicorn api.llm_gateway:app --host 127.0.0.1 --port 8000 --reload
 
 from typing import List, Optional, Literal, Dict, Any
 import os, json
