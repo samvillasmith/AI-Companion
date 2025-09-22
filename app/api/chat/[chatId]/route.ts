@@ -219,8 +219,11 @@ Remember: Be helpful but concise. Quality over quantity.`;
     
     console.log(`[CHAT_API] Response received for model ${model} (${provider})`);
     
-    // Return just the text content for compatibility with the client
-    return NextResponse.json(aiResponse);
+    // Return plain text response for compatibility with the client
+    return new Response(aiResponse, {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain' },
+    });
 
   } catch (error) {
     console.error("[CHAT_ERROR]", error);
