@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuth, currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import prismadb from "../../../../lib/prismadb";
 import { checkSubscription } from "../../../../lib/subscription";
 
@@ -67,7 +67,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   try {
     const { companionId } = await ctx.params;
 
-    const { userId } = getAuth(req);
+    const { userId } = await auth(); // <- Changed from getAuth(req) to await auth()
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }

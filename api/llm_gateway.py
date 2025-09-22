@@ -20,7 +20,9 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 # --- Stop markers to prevent roleplay echoing
-STOP_MARKERS = ["\nUser:", "User:", "\nHuman:", "Human:", "\nAssistant:", "Assistant:", "\nASSISTANT:"]
+# OpenAI has a limit of 4 stop sequences, so we define two sets
+STOP_MARKERS_FULL = ["\nUser:", "User:", "\nHuman:", "Human:", "\nAssistant:", "Assistant:", "\nASSISTANT:"]
+STOP_MARKERS_LIMITED = ["\nUser:", "\nHuman:", "\nAssistant:", "Human:"]  # Max 4 for OpenAI
 
 # --- Provider env
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
@@ -62,17 +64,21 @@ def _openai_client(base_url: Optional[str], api_key: str) -> OpenAIClient:
     return OpenAIClient(base_url=base_url, api_key=api_key, default_headers={"X-Title": "polyglot-gateway"})
 
 def call_openai_like(base_url: Optional[str], api_key: str, model: str, messages: List[Msg],
-                     temperature: float, top_p: float, max_tokens: int) -> str:
+                     temperature: float, top_p: float, max_tokens: int, use_limited_stops: bool = False) -> str:
     client = _openai_client(base_url=base_url, api_key=api_key)
     # massage messages
     msgs = [{"role": m.role, "content": m.content} for m in messages]
+    
+    # Use limited stop sequences for OpenAI (max 4)
+    stop_sequences = STOP_MARKERS_LIMITED if use_limited_stops else STOP_MARKERS_FULL
+    
     resp = client.chat.completions.create(
         model=model,
         messages=msgs,
         temperature=temperature,
         top_p=top_p,
         max_tokens=max_tokens,
-        stop=STOP_MARKERS,
+        stop=stop_sequences,
     )
     text = (resp.choices[0].message.content or "").strip()
     return text
@@ -138,7 +144,7 @@ def call_bedrock(model_or_profile: str, messages: List[Msg],
         "max_tokens": max_tokens,
         "temperature": temperature,
         "top_p": top_p,
-        "stop_sequences": STOP_MARKERS,
+        "stop_sequences": STOP_MARKERS_FULL,  # Bedrock can handle all stop sequences
         "messages": anthro_msgs,
     }
 
@@ -200,6 +206,7 @@ def chat(body: ChatBody):
         if provider == "openai":
             if not OPENAI_API_KEY:
                 raise HTTPException(status_code=400, detail="OPENAI_API_KEY is not set")
+            # OpenAI needs limited stop sequences (max 4)
             text = call_openai_like(
                 base_url=None,
                 api_key=OPENAI_API_KEY,
@@ -208,12 +215,14 @@ def chat(body: ChatBody):
                 temperature=temperature,
                 top_p=top_p,
                 max_tokens=max_tokens,
+                use_limited_stops=True,  # Use only 4 stop sequences
             )
             return {"text": text, "provider": "openai", "model": model}
 
         if provider == "xai":
             if not XAI_API_KEY:
                 raise HTTPException(status_code=400, detail="XAI_API_KEY is not set")
+            # xAI can handle all stop sequences
             text = call_openai_like(
                 base_url="https://api.x.ai/v1",
                 api_key=XAI_API_KEY,
@@ -222,6 +231,7 @@ def chat(body: ChatBody):
                 temperature=temperature,
                 top_p=top_p,
                 max_tokens=max_tokens,
+                use_limited_stops=False,  # xAI can handle all stop sequences
             )
             return {"text": text, "provider": "xai", "model": model}
 

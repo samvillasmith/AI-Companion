@@ -42,11 +42,14 @@ export const ChatClient = ({ companion }: ChatClientProps) => {
     setIsLoading(true);
 
     try {
-      // call the api directly
+      // call the api directly - INCLUDE CATEGORY!
       const res = await fetch(`/api/chat/${companion.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: text }),
+        body: JSON.stringify({ 
+          prompt: text,
+          category: companion.categoryId, // Pass the category ID
+        }),
       });
 
       const reply = (await res.text()).trim();
@@ -56,7 +59,7 @@ export const ChatClient = ({ companion }: ChatClientProps) => {
         ...cur,
         {
           role: "system", 
-          content: reply || "I’m here—tell me more?",
+          content: reply || "I'm here—tell me more?",
         },
       ]);
     } catch (err) {

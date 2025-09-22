@@ -1,6 +1,6 @@
 // lib/llm.ts
 
-export type ProviderName = "bedrock" | "openai" | "xai";
+export type ProviderName = "bedrock" | "openai" | "xai" | "google";
 export type Role = "system" | "user" | "assistant";
 
 export interface ChatMessage {
@@ -14,21 +14,67 @@ const env = (k: string, d = "") => process.env[k] ?? d;
 
 export const gatewayBase = () => env("GATEWAY_URL", "http://127.0.0.1:8000");
 
-// ——— Models (from your logs/env) ———
+// ——— Models from ENV ———
 const BEDROCK_MODEL_DEFAULT = env(
   "BEDROCK_MODEL_DEFAULT",
-  "anthropic.claude-3-5-sonnet-20240620-v1:0"
+  "anthropic.claude-3-haiku-20240307-v1:0"  // Haiku as fallback
 );
-const BEDROCK_MODEL_MENTORS = env(
-  "BEDROCK_MODEL_MENTORS",
-  "anthropic.claude-3-5-sonnet-20240620-v1:0"
-);
-const OPENAI_MODEL_SERIOUS = env("OPENAI_MODEL_SERIOUS", "gpt-4o-mini");
-const XAI_MODEL_CREATIVE = env("XAI_MODEL_CREATIVE", "grok-3");
 
-// ——— Category defaults ———
+// Map categories to different providers and models
 const CATEGORY_DEFAULTS: Record<string, { provider: ProviderName; model: string }> = {
-  Mentors: { provider: "bedrock", model: BEDROCK_MODEL_MENTORS },
+  // Bedrock (Claude Haiku) for mentoring/professional
+  Mentors: { 
+    provider: "bedrock", 
+    model: env("BEDROCK_MODEL_MENTORS", BEDROCK_MODEL_DEFAULT) 
+  },
+  Career: { 
+    provider: "bedrock", 
+    model: env("BEDROCK_MODEL_CAREER", BEDROCK_MODEL_DEFAULT) 
+  },
+  
+  // OpenAI for technical/educational
+  Technology: { 
+    provider: "openai", 
+    model: env("OPENAI_MODEL_TECH", "gpt-4o-mini") 
+  },
+  Sports: { 
+    provider: "openai", 
+    model: env("OPENAI_MODEL_SPORTS", "gpt-4o-mini") 
+  },
+  
+  // Google Gemini for creative/entertainment
+  "Movies & TV": { 
+    provider: "google", 
+    model: env("GOOGLE_MODEL_MOVIES", "gemini-1.5-flash") 
+  },
+  Music: { 
+    provider: "google", 
+    model: env("GOOGLE_MODEL_MUSIC", "gemini-1.5-flash") 
+  },
+  
+  // xAI Grok for casual/fun
+  Friends: { 
+    provider: "xai", 
+    model: env("XAI_MODEL_FRIENDS", "grok-2") 
+  },
+  Gaming: { 
+    provider: "xai", 
+    model: env("XAI_MODEL_GAMING", "grok-2") 
+  },
+  Travel: { 
+    provider: "xai", 
+    model: env("XAI_MODEL_TRAVEL", "grok-2") 
+  },
+  Spirituality: { 
+    provider: "xai", 
+    model: env("XAI_MODEL_SPIRITUAL", "grok-2") 
+  },
+  
+  // Default fallback
+  General: { 
+    provider: "xai", 
+    model: env("XAI_MODEL_DEFAULT", "grok-2") 
+  },
 };
 
 export function parsePersonalityTag(seed?: string | null): Personality {
@@ -42,27 +88,35 @@ export function getProviderAndModelForCompanion(
   category?: string | null,
   personality?: Personality | null
 ): { provider: ProviderName; modelName: string; providerOptions?: any } {
-  const key = (category ?? "").trim();
-  const base =
-    CATEGORY_DEFAULTS[key] ??
-    ({ provider: "xai", model: "grok-3" } as const);
+  const key = (category ?? "General").trim();
+  
+  // Get the category default or fall back to General
+  const base = CATEGORY_DEFAULTS[key] ?? CATEGORY_DEFAULTS["General"];
 
   let provider = base.provider;
   let modelName = base.model;
 
-  if (key !== "Mentors") {
-    if (personality === "serious") {
-      provider = "openai";
-      modelName = OPENAI_MODEL_SERIOUS;
-    } else if (personality === "creative") {
-      provider = "xai";
-      modelName = XAI_MODEL_CREATIVE;
-    }
+  // Optional: Override based on personality
+  if (personality === "serious" && provider !== "bedrock") {
+    // For serious tone, prefer Claude or GPT-4
+    provider = Math.random() > 0.5 ? "bedrock" : "openai";
+    modelName = provider === "bedrock" 
+      ? BEDROCK_MODEL_DEFAULT 
+      : env("OPENAI_MODEL_SERIOUS", "gpt-4o-mini");
+  } else if (personality === "creative") {
+    // For creative, prefer Gemini or Grok
+    provider = Math.random() > 0.5 ? "google" : "xai";
+    modelName = provider === "google"
+      ? env("GOOGLE_MODEL_CREATIVE", "gemini-1.5-flash")
+      : env("XAI_MODEL_CREATIVE", "grok-2");
   }
 
-  if (provider === "bedrock" && !modelName) {
+  // Ensure we always have a model
+  if (!modelName) {
     modelName = BEDROCK_MODEL_DEFAULT;
   }
+
+  console.log(`[LLM] Category "${key}" → Provider: ${provider}, Model: ${modelName}`);
 
   return { provider, modelName, providerOptions: undefined };
 }
