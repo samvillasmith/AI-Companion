@@ -1,4 +1,4 @@
-// app/api/chat/[chatId]/route.ts
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import "server-only";
 import { NextResponse } from "next/server";
 import type { ChatMessage, ProviderName } from "@/lib/llm";
