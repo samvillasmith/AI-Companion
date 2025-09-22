@@ -1,27 +1,35 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// app/api/companion/[companionId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser, auth } from "@clerk/nextjs/server";
 import prismadb from "../../../../lib/prismadb";
 import { checkSubscription } from "../../../../lib/subscription";
-import { getDisplayName } from "@/lib/user";
+
+// Optional helper if you added it
+const getDisplayName = (user: any) =>
+  user?.firstName ??
+  user?.username ??
+  user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] ??
+  "Anonymous";
 
 export const dynamic = "force-dynamic";
 
-type Ctx = { params: { companionId: string } }; // no need for Promise here
+// NOTE: params is a Promise per Next 15.5.2 validator
+type Ctx = { params: Promise<{ companionId: string }> };
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   try {
-    const { companionId } = ctx.params;
+    const { companionId } = await ctx.params;  // <-- await the Promise
 
     const body = await req.json();
     const user = await currentUser();
-
     const { src, name, description, instructions, seed, categoryId } = body ?? {};
 
     if (!companionId) {
       return new NextResponse("Companion ID is required", { status: 400 });
     }
 
-    // Only require userId
+    // Only require a valid authenticated userId (do NOT require firstName)
     if (!user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -51,7 +59,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       data: {
         categoryId,
         userId: user.id,
-        userName: displayName,   // ← fallback-safe
+        userName: displayName,   // <-- no firstName assumption
         src,
         name,
         description,
@@ -67,9 +75,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   }
 }
 
-export async function DELETE(req: NextRequest, ctx: Ctx) {
+export async function DELETE(_req: NextRequest, ctx: Ctx) {
   try {
-    const { companionId } = ctx.params;
+    const { companionId } = await ctx.params;  // <-- await the Promise
 
     const { userId } = await auth();
     if (!userId) {
@@ -89,7 +97,6 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
     }
 
     await prismadb.companion.delete({ where: { id: companionId } });
-
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error("[COMPANION_DELETE]", error);
