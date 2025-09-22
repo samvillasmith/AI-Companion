@@ -9,7 +9,8 @@ export async function POST(req: Request) {
     const user = await currentUser();
     const { src, name, description, instructions, seed, categoryId } = body;
 
-    if (!user || !user.id || !user.firstName) {
+    // Only require a valid userId
+    if (!user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -18,16 +19,22 @@ export async function POST(req: Request) {
     }
 
     const isPremium = await checkSubscription();
-
-    if (!isPremium){
-      return new NextResponse("Premium subscription required", { status: 403 })
+    if (!isPremium) {
+      return new NextResponse("Premium subscription required", { status: 403 });
     }
+
+    // Robust display name
+    const displayName =
+      user.firstName ??
+      user.username ??
+      user.emailAddresses?.[0]?.emailAddress?.split("@")[0] ??
+      "Anonymous";
 
     const companion = await prismadb.companion.create({
       data: {
         categoryId,
         userId: user.id,
-        userName: user.firstName,
+        userName: displayName,   // <-- use the fallback
         src,
         name,
         description,
