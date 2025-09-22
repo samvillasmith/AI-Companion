@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser, auth } from "@clerk/nextjs/server";
 import prismadb from "../../../../lib/prismadb";
 import { checkSubscription } from "../../../../lib/subscription";
+import { getDisplayName } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
-type Ctx = { params: Promise<{ companionId: string }> };
+type Ctx = { params: { companionId: string } }; // no need for Promise here
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   try {
-    const { companionId } = await ctx.params;
+    const { companionId } = ctx.params;
 
     const body = await req.json();
     const user = await currentUser();
@@ -20,7 +21,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       return new NextResponse("Companion ID is required", { status: 400 });
     }
 
-    if (!user?.id || !user.firstName) {
+    // Only require userId
+    if (!user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -42,12 +44,14 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       return new NextResponse("Not found", { status: 404 });
     }
 
+    const displayName = getDisplayName(user);
+
     const companion = await prismadb.companion.update({
       where: { id: companionId, userId: user.id },
       data: {
         categoryId,
         userId: user.id,
-        userName: user.firstName,
+        userName: displayName,   // ← fallback-safe
         src,
         name,
         description,
@@ -65,9 +69,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 
 export async function DELETE(req: NextRequest, ctx: Ctx) {
   try {
-    const { companionId } = await ctx.params;
+    const { companionId } = ctx.params;
 
-    const { userId } = await auth(); // <- Changed from getAuth(req) to await auth()
+    const { userId } = await auth();
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -76,7 +80,6 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
       return new NextResponse("Companion ID is required", { status: 400 });
     }
 
-    // Ensure it belongs to the caller
     const existing = await prismadb.companion.findFirst({
       where: { id: companionId, userId },
       select: { id: true },
