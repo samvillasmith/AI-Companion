@@ -1,4 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// app/api/stripe/confirm-payment/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { stripe } from "@/lib/stripe";
@@ -8,12 +10,9 @@ import type Stripe from "stripe";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type SubscriptionWithPeriod = Stripe.Subscription & {
-  current_period_end?: number | null;
-};
-
 function toDate(sec?: number | null) {
-  return typeof sec === "number" ? new Date(sec * 1000) : null;
+  if (typeof sec !== "number" || !sec) return null;
+  return new Date(sec * 1000);
 }
 
 export async function POST(req: NextRequest) {
@@ -87,33 +86,86 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if subscription already exists (idempotency)
+    // Get subscription details from Stripe
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    
+    // Cast to any to access the properties we need
+    const sub = subscription as any;
+
+    console.log("[CONFIRM_PAYMENT] Raw subscription from Stripe:", {
+      id: sub.id,
+      status: sub.status,
+      current_period_end: sub.current_period_end,
+      current_period_start: sub.current_period_start,
+      created: sub.created
+    });
+
+    // Get customer ID
+    const customerId = typeof sub.customer === "string" 
+      ? sub.customer 
+      : sub.customer.id;
+
+    // Get price ID
+    const priceId = typeof sub.items.data[0].price === "string"
+      ? sub.items.data[0].price
+      : sub.items.data[0].price.id;
+
+    // Get the period end - it should be on the subscription object directly
+    const periodEndUnix = sub.current_period_end;
+    
+    if (!periodEndUnix) {
+      console.error("[CONFIRM_PAYMENT] No period end found, using 30 days from now as fallback");
+      // Fallback: 30 days from now
+      const fallbackDate = new Date();
+      fallbackDate.setDate(fallbackDate.getDate() + 30);
+      
+      await prismadb.userSubscription.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: sub.id,
+          stripePriceId: priceId,
+          stripeCurrentPeriodEnd: fallbackDate,
+        },
+        update: {
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: sub.id,
+          stripePriceId: priceId,
+          stripeCurrentPeriodEnd: fallbackDate,
+        },
+      });
+      
+      console.log("✅ [CONFIRM_PAYMENT] Used fallback date for user:", user.id);
+      return NextResponse.json({ 
+        success: true, 
+        message: "Subscription activated with fallback date" 
+      });
+    }
+
+    // Convert unix timestamp to Date
+    const periodEnd = new Date(periodEndUnix * 1000);
+
+    console.log("[CONFIRM_PAYMENT] Subscription details:", {
+      userId: user.id,
+      subscriptionId: sub.id,
+      periodEnd: periodEnd.toISOString(),
+      periodEndUnix: periodEndUnix,
+      status: sub.status
+    });
+
+    // Check if subscription already exists
     const existingSubscription = await prismadb.userSubscription.findUnique({
       where: { userId: user.id }
     });
 
-    if (existingSubscription?.stripeSubscriptionId === subscriptionId) {
-      console.log("[CONFIRM_PAYMENT] Subscription already exists for user");
-      return NextResponse.json({ success: true, message: "Subscription already active" });
+    if (existingSubscription) {
+      console.log("[CONFIRM_PAYMENT] Updating existing subscription");
+    } else {
+      console.log("[CONFIRM_PAYMENT] Creating new subscription");
     }
 
-    // Get subscription details from Stripe
-    const subResp = await stripe.subscriptions.retrieve(subscriptionId, {
-      expand: ["items.data.price", "customer"],
-    });
-
-    const sub = subResp as unknown as SubscriptionWithPeriod;
-
-    const customerId =
-      typeof sub.customer === "string" ? sub.customer : sub.customer.id;
-
-    const firstItem = sub.items.data[0];
-    const price = firstItem.price;
-    const priceId = typeof price === "string" ? price : price.id;
-
-    const periodEnd = toDate(sub.current_period_end ?? null);
-
-    // Upsert subscription
+    // ALWAYS upsert/update subscription with correct end date from Stripe
     await prismadb.userSubscription.upsert({
       where: { userId: user.id },
       create: {
@@ -121,17 +173,17 @@ export async function POST(req: NextRequest) {
         stripeCustomerId: customerId,
         stripeSubscriptionId: sub.id,
         stripePriceId: priceId,
-        stripeCurrentPeriodEnd: periodEnd ?? new Date(),
+        stripeCurrentPeriodEnd: periodEnd,
       },
       update: {
         stripeCustomerId: customerId,
         stripeSubscriptionId: sub.id,
         stripePriceId: priceId,
-        stripeCurrentPeriodEnd: periodEnd ?? new Date(),
+        stripeCurrentPeriodEnd: periodEnd,
       },
     });
 
-    console.log("✅ [CONFIRM_PAYMENT] Subscription confirmed for user:", user.id);
+    console.log("✅ [CONFIRM_PAYMENT] Subscription confirmed/updated for user:", user.id, "expires:", periodEnd.toISOString());
 
     return NextResponse.json({ 
       success: true, 
