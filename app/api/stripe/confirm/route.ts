@@ -11,7 +11,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function toDate(sec?: number | null) {
-  return typeof sec === "number" ? new Date(sec * 1000) : null;
+  // FIX: Convert Stripe's unix timestamp (seconds) to JavaScript Date
+  if (typeof sec !== "number" || !sec) return null;
+  return new Date(sec * 1000);
 }
 
 async function upsertUserSub(args: {
@@ -23,6 +25,17 @@ async function upsertUserSub(args: {
 }) {
   const { userId, customerId, subId, priceId, periodEnd } = args;
 
+  if (!periodEnd) {
+    console.error("[CONFIRM] No period end date provided!");
+    throw new Error("Invalid subscription period");
+  }
+
+  console.log("[CONFIRM] Upserting subscription:", {
+    userId,
+    subId,
+    periodEnd: periodEnd.toISOString()
+  });
+
   await prismadb.userSubscription.upsert({
     where: { userId },
     create: {
@@ -30,13 +43,13 @@ async function upsertUserSub(args: {
       stripeCustomerId: customerId,
       stripeSubscriptionId: subId,
       stripePriceId: priceId,
-      stripeCurrentPeriodEnd: periodEnd ?? new Date(),
+      stripeCurrentPeriodEnd: periodEnd,
     },
     update: {
       stripeCustomerId: customerId,
       stripeSubscriptionId: subId,
       stripePriceId: priceId,
-      stripeCurrentPeriodEnd: periodEnd ?? new Date(),
+      stripeCurrentPeriodEnd: periodEnd,
     },
   });
 }
@@ -115,7 +128,23 @@ export async function GET(req: NextRequest) {
     const price = firstItem.price;
     const priceId = typeof price === "string" ? price : price.id;
 
-    const periodEnd = toDate(sub.current_period_end ?? null);
+    // FIX: Get the period end from the subscription, NOT current date
+    const periodEnd = toDate(sub.current_period_end);
+
+    if (!periodEnd) {
+      console.error("[CONFIRM] No period end found in subscription", {
+        subscriptionId: sub.id,
+        currentPeriodEnd: sub.current_period_end
+      });
+      return new NextResponse("Invalid subscription period", { status: 500 });
+    }
+
+    console.log("[CONFIRM] Retrieved subscription from Stripe:", {
+      subscriptionId: sub.id,
+      periodEnd: periodEnd.toISOString(),
+      rawPeriodEnd: sub.current_period_end,
+      status: sub.status
+    });
 
     await upsertUserSub({
       userId: user.id, // Use the authenticated user's ID
