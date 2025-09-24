@@ -79,11 +79,11 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
       );
     }
 
-    // Write user input to history (consider setting storeInPinecone to true for important messages)
+    // Write user input to history (STORE IN PINECONE!)
     await memoryManager.writeToHistory(
       `Human: ${userInput}`, 
       companionKey,
-      false  // Set to true if you want to store user messages in Pinecone
+      true  // CHANGED TO TRUE - Store in Pinecone!
     );
 
     // Get recent chat history for context
@@ -200,11 +200,11 @@ Remember: Be helpful but concise. Quality over quantity. Only reference memories
       .replace(/\\/g, '')               // Remove any remaining backslashes
       .trim();
 
-    // Write AI response to history (consider storing important responses in Pinecone)
+    // Write AI response to history (STORE IN PINECONE!)
     await memoryManager.writeToHistory(
       `${companion.name}: ${aiResponse}`,
       companionKey,
-      false  // Set to true if you want to store assistant responses in Pinecone
+      true  // CHANGED TO TRUE - Store in Pinecone!
     );
 
     // Store message in database
