@@ -68,7 +68,7 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
       userId: userId,
     };
 
-    // Read conversation history from Redis
+    // Read conversation history from Redis (user-scoped)
     const records = await memoryManager.readLatestHistory(companionKey);
     if (!records || records.length === 0) {
       // Seed the chat history if this is first interaction
@@ -79,28 +79,33 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
       );
     }
 
-    // Write user input to history
-    await memoryManager.writeToHistory(`Human: ${userInput}`, companionKey);
+    // Write user input to history (consider setting storeInPinecone to true for important messages)
+    await memoryManager.writeToHistory(
+      `Human: ${userInput}`, 
+      companionKey,
+      false  // Set to true if you want to store user messages in Pinecone
+    );
 
     // Get recent chat history for context
     const recentChatHistory = await memoryManager.readLatestHistory(companionKey);
 
-    // Perform vector search for relevant context (RAG)
+    // Perform vector search for relevant context (RAG) - NOW WITH USER SCOPING
     const similarDocs = await memoryManager.vectorSearch(
       recentChatHistory,
-      companion.name
+      companion.name,
+      userId  // CRITICAL: Pass userId to prevent cross-user data leakage
     );
 
     let relevantHistory = "";
     if (similarDocs && similarDocs.length !== 0) {
       relevantHistory = similarDocs.map((doc) => doc.pageContent).join("\n");
+      console.log(`[CHAT_API] Found ${similarDocs.length} relevant memory chunks for user ${userId}`);
     }
 
     // Build the messages array with full context
     const messages: ChatMessage[] = [];
 
     // System message with companion instructions and personality
-    // Add instructions to be concise and natural
     const systemPrompt = `You are ${companion.name}. ${companion.description}.
 
 IMPORTANT INSTRUCTIONS:
@@ -108,17 +113,18 @@ IMPORTANT INSTRUCTIONS:
 2. Keep your responses concise and conversational (2-4 sentences is ideal, maximum 1-2 short paragraphs).
 3. Be natural and engaging, but don't overwhelm with too much information.
 4. Stay focused on the current topic without going off on tangents.
+5. If asked what you remember, only reference conversations with this specific user.
 
 ${companion.instructions}
 
 ${companion.seed ? `Example conversation style:\n${companion.seed}\n` : ""}
 
-${relevantHistory ? `Relevant context from past conversations:\n${relevantHistory}\n` : ""}
+${relevantHistory ? `Relevant context from your past conversations with this user:\n${relevantHistory}\n` : ""}
 
 Recent conversation history:
 ${recentChatHistory}
 
-Remember: Be helpful but concise. Quality over quantity.`;
+Remember: Be helpful but concise. Quality over quantity. Only reference memories from THIS user's conversations.`;
 
     messages.push({
       role: "system",
@@ -147,6 +153,7 @@ Remember: Be helpful but concise. Quality over quantity.`;
       messageCount: messages.length,
       userId,
       companionName: companion.name,
+      ragDocsFound: similarDocs.length,
     });
 
     // Normalize messages for the provider
@@ -173,7 +180,8 @@ Remember: Be helpful but concise. Quality over quantity.`;
       console.error("[GATEWAY_ERROR]", resp.status, text);
       await memoryManager.writeToHistory(
         `${companion.name}: Sorry, I had an issue. Can you try again?`,
-        companionKey
+        companionKey,
+        false
       );
       return NextResponse.json(
         { error: "gateway_error", detail: text || `status ${resp.status}` },
@@ -192,10 +200,11 @@ Remember: Be helpful but concise. Quality over quantity.`;
       .replace(/\\/g, '')               // Remove any remaining backslashes
       .trim();
 
-    // Write AI response to history
+    // Write AI response to history (consider storing important responses in Pinecone)
     await memoryManager.writeToHistory(
       `${companion.name}: ${aiResponse}`,
-      companionKey
+      companionKey,
+      false  // Set to true if you want to store assistant responses in Pinecone
     );
 
     // Store message in database
@@ -227,6 +236,52 @@ Remember: Be helpful but concise. Quality over quantity.`;
 
   } catch (error) {
     console.error("[CHAT_ERROR]", error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
+// Optional: DELETE endpoint to clear user's memory with a companion
+export async function DELETE(req: Request, ctx: { params: Promise<Params> }) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { chatId } = await ctx.params;
+
+    // Verify companion exists
+    const companion = await prismadb.companion.findUnique({
+      where: { id: chatId },
+      select: { id: true, name: true },
+    });
+
+    if (!companion) {
+      return new NextResponse("Companion not found", { status: 404 });
+    }
+
+    // Clear user's memories with this companion
+    const memoryManager = await MemoryManager.getInstance();
+    const companionKey = {
+      companionName: companion.name,
+      modelName: "chatgpt",
+      userId: userId,
+    };
+
+    await memoryManager.clearUserMemories(companionKey);
+
+    // Also delete database messages for this user and companion
+    await prismadb.message.deleteMany({
+      where: {
+        companionId: companion.id,
+        userId: userId,
+      },
+    });
+
+    console.log(`[CHAT_API] Cleared memories for user ${userId} with companion ${companion.name}`);
+
+    return NextResponse.json({ success: true, message: "Memories cleared" });
+
+  } catch (error) {
+    console.error("[CHAT_DELETE_ERROR]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
